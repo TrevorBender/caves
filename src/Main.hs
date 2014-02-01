@@ -6,6 +6,8 @@ import System.Console.ANSI
 import Control.Lens
 import System.IO (hGetChar, hGetEcho, hSetEcho, stdin)
 
+-- GAME -----------------------------------------------------------------------{{{
+
 data Screen = Start | Win | Lose deriving (Show)
 
 data Game = Game
@@ -14,6 +16,19 @@ data Game = Game
 
 makeLenses ''Game
 
+ui :: Game -> Screen
+ui game = head $ game^.uis
+
+emptyUis :: Game -> Bool
+emptyUis game = null $ game^.uis
+
+createGame :: Game
+createGame = Game
+    { _uis = [ Start ]
+    }
+--}}}
+
+-- DRAWING --------------------------------------------------------------------{{{
 drawScreen :: Screen -> Game -> IO ()
 drawScreen Start _ = do
     setCursorPosition 4 4
@@ -42,13 +57,10 @@ drawScreen Lose _ = do
     putStr "Press <Anything> to Go back to Start"
 
 drawGame :: Game -> IO ()
-drawGame game = drawScreen (head (game ^. uis)) game
+drawGame game = drawScreen (ui game) game
+--}}}
 
-createGame :: Game
-createGame = Game
-    { _uis = [ Start ]
-    }
-
+-- INPUT ----------------------------------------------------------------------{{{
 getInput :: IO Char
 getInput = hGetChar stdin
 
@@ -71,10 +83,8 @@ processInputScreen Lose ch game =
          _ -> (uis .~ [Start]) game
 
 processInput :: Char -> Game -> Game
-processInput ch game = processInputScreen (head (game ^. uis)) ch game
-
-emptyUis :: Game -> Bool
-emptyUis game = null (game ^. uis)
+processInput ch game = processInputScreen (ui game) ch game
+--}}}
 
 gameLoop :: Game -> IO ()
 gameLoop game = do
@@ -90,7 +100,7 @@ main :: IO ()
 main = do
     echo <- hGetEcho stdin
     hSetEcho stdin False
-    gameLoop (createGame)
+    gameLoop createGame
     setCursorPosition 0 0
     clearScreen
     hSetEcho stdin echo

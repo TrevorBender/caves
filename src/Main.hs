@@ -18,7 +18,10 @@ emptyUis :: Game -> Bool
 emptyUis game = null $ game^.uis
 
 createPlayer :: Coord -> Creature
-createPlayer loc = Creature { _location = loc , _c_glyph = '@' }
+createPlayer loc = Creature
+    { _location = loc
+    , _c_glyph = '@'
+    , _c_color = Blue }
 
 createGame :: IO Game
 createGame = do

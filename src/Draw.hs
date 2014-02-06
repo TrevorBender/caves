@@ -38,7 +38,7 @@ drawLevel :: Game -> IO ()
 drawLevel game = do
     resetColor
     mapM_ (\r -> putStrLn (map (\t -> t^.glyph) r)) (game^.level)
-    drawHero game
+    drawPlayer game
 
 drawGame :: Game -> IO ()
 drawGame game = drawScreen (ui game) game
@@ -46,10 +46,12 @@ drawGame game = drawScreen (ui game) game
 resetColor :: IO ()
 resetColor = setSGR [ SetColor Foreground Vivid Black ]
 
-drawHero :: Game -> IO ()
-drawHero game = do
+drawPlayer :: Game -> IO ()
+drawPlayer game = do
     let (x,y) = game^.player^.location
-    setSGR [ SetColor Foreground Vivid Blue ]
+        glyph = game^.player^.c_glyph
+        color = game^.player^.c_color
+    setSGR [ SetColor Foreground Vivid color ]
     setCursorPosition y x
-    putStrLn "@"
+    putStrLn [glyph]
     resetColor

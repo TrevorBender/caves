@@ -3,6 +3,7 @@
 module Game where
 
 import Control.Lens
+import System.Console.ANSI
 
 gameWidth, gameHeight :: Int
 gameWidth = 80
@@ -15,6 +16,7 @@ type Coord = (Int, Int)
 data Creature = Creature
     { _location :: Coord
     , _c_glyph :: Char
+    , _c_color :: Color
     } deriving (Show)
 makeLenses ''Creature
 
@@ -39,7 +41,6 @@ data Game = Game
     , _player :: Creature
     } deriving (Show)
 makeLenses ''Game
-
 
 ui :: Game -> Screen
 ui game = head $ game^.uis

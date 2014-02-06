@@ -38,6 +38,7 @@ createGame = do
 gameLoop :: Game -> IO ()
 gameLoop game = do
     clearScreen
+    resetColor
     drawGame game
     ch <- getInput
     let game' = processInput ch game

@@ -5,30 +5,30 @@ import System.Console.ANSI
 
 import Game
 
+drawBlock :: Int -> Int -> [String] -> IO ()
+drawBlock y x = (mapM_ $ \(i, s) -> do
+    setCursorPosition (y + i) x
+    putStr s
+    ) . zip [0..]
+
 drawScreen :: Screen -> Game -> IO ()
 drawScreen Start _ = do
     setCursorPosition 4 4
     putStr "Welcome to the Caves of Slight Danger"
-    setCursorPosition 15 4
-    putStr "Press [enter] to Start Playing"
-    setCursorPosition 16 4
-    putStr "Press [q] to Quit"
+    drawBlock 15 4 [ "Press [enter] to Start Playing"
+                   , "Press [q] to Quit" ]
 
 drawScreen Win _ = do
     setCursorPosition 4 4
     putStr "You WIN!"
-    setCursorPosition 15 4
-    putStr "Press [esc] to Quit"
-    setCursorPosition 16 4
-    putStr "Press <Anything> to Go back to Start"
+    drawBlock 15 4 [ "Press [esc] to Quit"
+                   , "Press <Anything> to Go back to Start" ]
 
 drawScreen Lose _ = do
     setCursorPosition 4 4
     putStr "You LOSE!"
-    setCursorPosition 15 4
-    putStr "Press [esc] to Quit"
-    setCursorPosition 16 4
-    putStr "Press <Anything> to Go back to Start"
+    drawBlock 15 4 [ "Press [esc] to Quit"
+                   , "Press <Anything> to Go back to Start" ]
 
 drawScreen Play game = do
     setCursorPosition 0 0
@@ -36,8 +36,8 @@ drawScreen Play game = do
 
 drawLevel :: Game -> IO ()
 drawLevel game = do
-    resetColor
-    mapM_ (\r -> putStrLn (map (\t -> t^.glyph) r)) (game^.level)
+    drawBlock 0 0 (map (\r -> (map (\t -> t^.glyph) r)) (game^.level))
+    {-mapM_ (\r -> putStrLn (map (\t -> t^.glyph) r)) (game^.level)-}
     drawPlayer game
 
 drawGame :: Game -> IO ()
@@ -54,4 +54,3 @@ drawPlayer game = do
     setSGR [ SetColor Foreground Vivid color ]
     setCursorPosition y x
     putStrLn [glyph]
-    resetColor

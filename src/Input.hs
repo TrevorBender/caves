@@ -29,25 +29,34 @@ processInputScreen Play ch game =
          '\n' -> (uis .~ [Win]) game
          '\DEL' -> (uis .~ [Lose]) game
          'q' -> (uis .~ []) game
-         'h' -> movePlayer game W
-         'l' -> movePlayer game E
-         'k' -> movePlayer game N
-         'j' -> movePlayer game S
+         'h' -> movePlayer W  game 
+         'l' -> movePlayer E  game 
+         'k' -> movePlayer N  game 
+         'j' -> movePlayer S  game 
+         'y' -> movePlayer NW game 
+         'u' -> movePlayer NE game 
+         'b' -> movePlayer SW game 
+         'n' -> movePlayer SE game 
          _ -> game
 
 data Direction = N | E | S | W
+               | NE | SE | SW | NW
 
 offsetDir :: Direction -> Coord
 offsetDir N = (0, -1)
 offsetDir E = (1, 0)
 offsetDir S = (0, 1)
 offsetDir W = (-1, 0)
+offsetDir NE = (offsetDir N) <+> (offsetDir E)
+offsetDir SE = (offsetDir S) <+> (offsetDir E)
+offsetDir SW = (offsetDir S) <+> (offsetDir W)
+offsetDir NW = (offsetDir N) <+> (offsetDir W)
 
 (<+>) :: Coord -> Coord -> Coord
 (x,y) <+> (x',y') = (x + x',y + y')
 
-movePlayer :: Game -> Direction -> Game
-movePlayer game dir = ((player.location) .~ (loc <+> (offsetDir dir))) game
+movePlayer :: Direction -> Game -> Game
+movePlayer dir game = ((player.location) .~ (loc <+> (offsetDir dir))) game
     where loc = game^.player^.location
 
 processInput :: Char -> Game -> Game

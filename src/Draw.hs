@@ -37,7 +37,6 @@ drawScreen Play game = do
 drawLevel :: Game -> IO ()
 drawLevel game = do
     drawBlock 0 0 (map (\r -> (map (\t -> t^.glyph) r)) (game^.level))
-    {-mapM_ (\r -> putStrLn (map (\t -> t^.glyph) r)) (game^.level)-}
     drawPlayer game
 
 drawGame :: Game -> IO ()
@@ -46,11 +45,14 @@ drawGame game = drawScreen (ui game) game
 resetColor :: IO ()
 resetColor = setSGR [ SetColor Foreground Vivid Black ]
 
-drawPlayer :: Game -> IO ()
-drawPlayer game = do
-    let (x,y) = game^.player^.location
-        glyph = game^.player^.c_glyph
-        color = game^.player^.c_color
+drawCreature :: Creature -> IO ()
+drawCreature creature = do
+    let (x,y) = creature^.location
+        glyph = creature^.c_glyph
+        color = creature^.c_color
     setSGR [ SetColor Foreground Vivid color ]
     setCursorPosition y x
     putStrLn [glyph]
+
+drawPlayer :: Game -> IO ()
+drawPlayer game = drawCreature (game^.player)

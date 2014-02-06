@@ -1,43 +1,46 @@
 module Input where
 
 import Control.Lens
+import Control.Monad.State (State, modify, execState)
 
 import Game
 
 getInput :: IO Char
 getInput = getChar
 
-processInputScreen :: Screen -> Char -> Game -> Game
-processInputScreen Start ch game =
-    case ch of
-         '\n' -> (uis .~ [Play]) game
-         'q' -> (uis .~ []) game
-         _ -> game
+type GameState = State Game
 
-processInputScreen Win ch game =
+processInputScreen :: Screen -> Char -> GameState ()
+processInputScreen Start ch =
     case ch of
-         '\ESC' -> (uis .~ []) game
-         _ -> (uis .~ [Start]) game
+         '\n' -> modify (uis .~ [Play])
+         'q' -> modify (uis .~ [])
+         _ -> return ()
 
-processInputScreen Lose ch game =
+processInputScreen Win ch =
     case ch of
-         '\ESC' -> (uis .~ []) game
-         _ -> (uis .~ [Start]) game
+         '\ESC' -> modify (uis .~ [])
+         _ -> modify (uis .~ [Start])
 
-processInputScreen Play ch game =
+processInputScreen Lose ch =
     case ch of
-         '\n' -> (uis .~ [Win]) game
-         '\DEL' -> (uis .~ [Lose]) game
-         'q' -> (uis .~ []) game
-         'h' -> movePlayer W  game 
-         'l' -> movePlayer E  game 
-         'k' -> movePlayer N  game 
-         'j' -> movePlayer S  game 
-         'y' -> movePlayer NW game 
-         'u' -> movePlayer NE game 
-         'b' -> movePlayer SW game 
-         'n' -> movePlayer SE game 
-         _ -> game
+         '\ESC' -> modify (uis .~ [])
+         _ -> modify (uis .~ [Start])
+
+processInputScreen Play ch =
+    case ch of
+         '\n' -> uis .= [Win]
+         '\DEL' -> uis .= [Lose]
+         'q' -> uis .= []
+         'h' -> movePlayer W
+         'l' -> movePlayer E
+         'k' -> movePlayer N
+         'j' -> movePlayer S
+         'y' -> movePlayer NW
+         'u' -> movePlayer NE
+         'b' -> movePlayer SW
+         'n' -> movePlayer SE
+         _ -> return ()
 
 data Direction = N | E | S | W
                | NE | SE | SW | NW
@@ -55,9 +58,9 @@ offsetDir NW = (offsetDir N) <+> (offsetDir W)
 (<+>) :: Coord -> Coord -> Coord
 (x,y) <+> (x',y') = (x + x',y + y')
 
-movePlayer :: Direction -> Game -> Game
-movePlayer dir game = ((player.location) .~ (loc <+> (offsetDir dir))) game
-    where loc = game^.player^.location
+movePlayer :: Direction -> GameState ()
+movePlayer dir = (player.location) %= move
+    where move origin = origin <+> (offsetDir dir)
 
 processInput :: Char -> Game -> Game
-processInput ch game = processInputScreen (ui game) ch game
+processInput ch game = (execState $ processInputScreen (ui game) ch) game

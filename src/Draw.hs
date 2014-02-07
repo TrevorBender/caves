@@ -1,7 +1,7 @@
 module Draw where
 
 import Control.Lens
-import Data.Map.Strict as M
+import Data.Array
 import System.Console.ANSI
 
 import Game
@@ -39,8 +39,9 @@ drawLevel :: Game -> IO ()
 drawLevel game = do
     drawBlock 0 0 lvl
     drawPlayer game
-    where rows = M.elems (game^.level)
-          lvl = Prelude.map (\r -> M.foldr (\x str -> (x^.glyph) : str) "" r) rows
+    where rows = splitBy gameWidth (elems (game^.level))
+          lvl = map row2str rows
+          row2str = foldr (\x str -> (x^.glyph) : str) ""
 
 drawGame :: Game -> IO ()
 drawGame game = drawScreen (ui game) game

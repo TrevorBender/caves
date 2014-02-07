@@ -3,7 +3,7 @@
 module Game where
 
 import Control.Lens
-import Data.Map.Strict as M
+import Data.Array
 import System.Console.ANSI
 
 gameWidth, gameHeight :: Int
@@ -33,11 +33,7 @@ instance Eq Tile where
     -- (==) :: Tile -> Tile -> Bool
     (==) a b = a^.kind == b^.kind
 
-{-type Row = [Tile]-}
-{-type GameLevel = [Row]-}
-
-type Row = M.Map Int Tile
-type GameLevel = M.Map Int Row
+type GameLevel = Array (Int,Int) Tile
 
 data Game = Game
     { _uis   :: [Screen]
@@ -48,3 +44,8 @@ makeLenses ''Game
 
 ui :: Game -> Screen
 ui game = head $ game^.uis
+
+splitBy :: Int -> [a] -> [[a]]
+splitBy width [] = []
+splitBy width xs = (take width xs) : (splitBy width (drop width xs))
+

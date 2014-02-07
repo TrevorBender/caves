@@ -4,7 +4,7 @@ import Prelude hiding (floor)
 
 import Control.Lens
 import Control.Monad.State (State, modify, execState, get)
-import Data.Map.Strict as M
+import Data.Array
 
 import Game
 import World
@@ -76,9 +76,7 @@ dig :: Coord -> GameState ()
 dig (x,y) = do
     game <- get
     let lvl = game^.level
-        row = lvl ! y
-        row' = M.adjust (\_ -> floor) x row
-        lvl' = M.adjust (\_ -> row') y lvl
+        lvl' = lvl//[((y,x), floor)]
     level .= lvl'
 
 

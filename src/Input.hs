@@ -1,9 +1,13 @@
 module Input where
 
+import Prelude hiding (floor)
+
 import Control.Lens
-import Control.Monad.State (State, modify, execState)
+import Control.Monad.State (State, modify, execState, get)
+import Data.Map.Strict as M
 
 import Game
+import World
 
 getInput :: IO Char
 getInput = getChar
@@ -13,19 +17,19 @@ type GameState = State Game
 processInputScreen :: Screen -> Char -> GameState ()
 processInputScreen Start ch =
     case ch of
-         '\n' -> modify (uis .~ [Play])
-         'q' -> modify (uis .~ [])
+         '\n' -> uis .= [Play]
+         'q' -> uis .= []
          _ -> return ()
 
 processInputScreen Win ch =
     case ch of
-         '\ESC' -> modify (uis .~ [])
-         _ -> modify (uis .~ [Start])
+         '\ESC' -> uis .= []
+         _ -> uis .= [Start]
 
 processInputScreen Lose ch =
     case ch of
-         '\ESC' -> modify (uis .~ [])
-         _ -> modify (uis .~ [Start])
+         '\ESC' -> uis .= []
+         _ -> uis .= [Start]
 
 processInputScreen Play ch =
     case ch of
@@ -59,8 +63,26 @@ offsetDir NW = (offsetDir N) <+> (offsetDir W)
 (x,y) <+> (x',y') = (x + x',y + y')
 
 movePlayer :: Direction -> GameState ()
-movePlayer dir = (player.location) %= move
+movePlayer dir = do
+    game <- get
+    let origin = game^.player.location
+        loc = move origin
+    if tileAt game loc == floor
+       then (player.location) .= loc
+       else dig loc
     where move origin = origin <+> (offsetDir dir)
 
-processInput :: Char -> Game -> Game
-processInput ch game = (execState $ processInputScreen (ui game) ch) game
+dig :: Coord -> GameState ()
+dig (x,y) = do
+    game <- get
+    let lvl = game^.level
+        row = lvl ! y
+        row' = M.adjust (\_ -> floor) x row
+        lvl' = M.adjust (\_ -> row') y lvl
+    level .= lvl'
+
+
+processInput :: Char -> GameState ()
+processInput ch = do
+    game <- get
+    processInputScreen (ui game) ch

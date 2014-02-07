@@ -5,6 +5,7 @@ module Main where
 import Prelude hiding (floor)
 import System.Console.ANSI
 import Control.Lens
+import Control.Monad.State (execState)
 import System.IO (hGetChar, hGetEcho, hSetEcho, stdin)
 import System.Random (getStdGen, randomR, randomRs, RandomGen(..))
 
@@ -41,7 +42,7 @@ gameLoop game = do
     resetColor
     drawGame game
     ch <- getInput
-    let game' = processInput ch game
+    let game' = (execState $ processInput ch) game
     if (emptyUis game')
        then return ()
        else gameLoop game'

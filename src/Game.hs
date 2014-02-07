@@ -3,6 +3,7 @@
 module Game where
 
 import Control.Lens
+import Data.Map.Strict as M
 import System.Console.ANSI
 
 gameWidth, gameHeight :: Int
@@ -32,8 +33,11 @@ instance Eq Tile where
     -- (==) :: Tile -> Tile -> Bool
     (==) a b = a^.kind == b^.kind
 
-type Row = [Tile]
-type GameLevel = [Row]
+{-type Row = [Tile]-}
+{-type GameLevel = [Row]-}
+
+type Row = M.Map Int Tile
+type GameLevel = M.Map Int Row
 
 data Game = Game
     { _uis   :: [Screen]

@@ -3,6 +3,7 @@ module Input where
 import Prelude hiding (floor)
 
 import Control.Lens
+import Control.Monad (when)
 import Control.Monad.State (State, modify, execState, get)
 import Data.Array
 
@@ -62,15 +63,23 @@ offsetDir NW = (offsetDir N) <+> (offsetDir W)
 (<+>) :: Coord -> Coord -> Coord
 (x,y) <+> (x',y') = (x + x',y + y')
 
+inBounds :: Coord -> Bool
+inBounds (x,y) = x >= 0
+              && y >= 0
+              && x < gameWidth
+              && y < gameHeight
+
 movePlayer :: Direction -> GameState ()
 movePlayer dir = do
     game <- get
     let origin = game^.player.location
+        move origin = origin <+> (offsetDir dir)
         loc = move origin
-    if tileAt game loc == floor
-       then (player.location) .= loc
-       else dig loc
-    where move origin = origin <+> (offsetDir dir)
+    when (inBounds loc) $
+        if tileAt game loc == floor
+           then (player.location) .= loc
+           else dig loc
+    return ()
 
 dig :: Coord -> GameState ()
 dig (x,y) = do

@@ -39,9 +39,9 @@ drawLevel :: Game -> IO ()
 drawLevel game = do
     drawBlock 0 0 lvl
     drawPlayer game
-    where rows = splitBy gameWidth (elems (game^.level))
+    where rows = splitBy gameWidth $ elems $ game^.level
           lvl = map row2str rows
-          row2str = foldr (\x str -> (x^.glyph) : str) ""
+          row2str = foldr (\tile str -> (tile^.glyph) : str) ""
 
 drawGame :: Game -> IO ()
 drawGame game = drawScreen (ui game) game

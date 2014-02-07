@@ -14,7 +14,6 @@ import Game
 import Input
 import World
 
-
 emptyUis :: Game -> Bool
 emptyUis game = null $ game^.uis
 

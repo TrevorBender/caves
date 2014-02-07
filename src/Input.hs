@@ -13,8 +13,6 @@ import World
 getInput :: IO Char
 getInput = getChar
 
-type GameState = State Game
-
 processInputScreen :: Screen -> Char -> GameState ()
 processInputScreen Start ch =
     case ch of
@@ -47,37 +45,9 @@ processInputScreen Play ch =
          'n' -> movePlayer SE
          '>' -> climb Down
          '<' -> climb Up
+         's' -> smoothGame
          _ -> return ()
 
-data Climb = Up | Down
-
-data Direction = N | E | S | W
-               | NE | SE | SW | NW
-
-offsetDir :: Direction -> Coord
-offsetDir N = (0, -1, 0)
-offsetDir E = (1,  0, 0)
-offsetDir S = (0,  1, 0)
-offsetDir W = (-1, 0, 0)
-offsetDir NE = (offsetDir N) <+> (offsetDir E)
-offsetDir SE = (offsetDir S) <+> (offsetDir E)
-offsetDir SW = (offsetDir S) <+> (offsetDir W)
-offsetDir NW = (offsetDir N) <+> (offsetDir W)
-
-offsetClimb :: Climb -> Coord
-offsetClimb Up   = (0, 0, -1)
-offsetClimb Down = (0, 0,  1)
-
-(<+>) :: Coord -> Coord -> Coord
-(x,y,z) <+> (x',y',z') = (x + x',y + y',z+z')
-
-inBounds :: Coord -> Bool
-inBounds (x,y,z) = x >= 0
-              && y >= 0
-              && z >= 0
-              && x < gameWidth
-              && y < gameHeight
-              && z < gameDepth
 
 climb :: Climb -> GameState ()
 climb = move . offsetClimb
@@ -98,12 +68,11 @@ movePlayer :: Direction -> GameState ()
 movePlayer = move . offsetDir
 
 dig :: Coord -> GameState ()
-dig (x,y,z) = do
+dig loc = do
     game <- get
     let lvl = game^.level
-        lvl' = lvl//[((z,y,x), floor)]
+        lvl' = lvl//[(reverseCoord loc, floor)]
     level .= lvl'
-
 
 processInput :: Char -> GameState ()
 processInput ch = do

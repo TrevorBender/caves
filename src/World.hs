@@ -5,7 +5,7 @@ module World where
 import Prelude hiding (floor)
 
 import Control.Lens
-import Control.Monad.State (State, get, put, execState)
+import Control.Monad.State.Strict (State, get, put, execState)
 import Data.Array as A
 import System.Random (getStdGen, randomR, randomRs, RandomGen(..))
 
@@ -15,7 +15,10 @@ floor = Tile { _kind = Floor , _glyph = '.' }
 wall = Tile { _kind = Wall , _glyph = '#' }
 
 tileAt :: Game -> Coord -> Tile
-tileAt game loc = (game^.level) ! (reverseCoord loc)
+tileAt game = tileAtLevel (game^.level)
+
+tileAtLevel :: GameLevel -> Coord -> Tile
+tileAtLevel world loc = world ! (reverseCoord loc)
 
 findEmptyLocation :: RandomGen g => g -> Int -> Game -> Coord
 findEmptyLocation g depth game =
@@ -55,7 +58,7 @@ smoothWorld = do
     put world'
     where newElem :: GameLevel -> Coord -> Tile
           newElem world ix = if floors >= walls then floor else wall
-              where neighbors = neighbors8 ix world
+              where neighbors = (tileAtLevel world ix) : neighbors8 ix world
                     floors = length $ filter (== floor) neighbors
                     walls = (length neighbors) - floors
 

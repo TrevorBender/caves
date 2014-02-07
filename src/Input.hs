@@ -4,7 +4,7 @@ import Prelude hiding (floor)
 
 import Control.Lens
 import Control.Monad (when)
-import Control.Monad.State (State, modify, execState, get)
+import Control.Monad.State.Strict (State, modify, execState, get)
 import Data.Array
 
 import Game

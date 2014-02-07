@@ -3,14 +3,14 @@
 module Game where
 
 import Control.Lens
-import Control.Monad.State (State)
+import Control.Monad.State.Strict (State)
 import Data.Array
 import System.Console.ANSI
 
 gameWidth, gameHeight, gameDepth :: Int
-gameWidth = 80
-gameHeight = 30
-gameDepth = 2
+gameWidth = 120
+gameHeight = 40
+gameDepth = 5
 
 data Screen = Start | Win | Lose | Play deriving (Show)
 

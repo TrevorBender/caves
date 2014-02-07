@@ -5,7 +5,7 @@ module World where
 import Prelude hiding (floor)
 
 import Control.Lens
-import Control.Monad.State (get)
+import Control.Monad.State (State, get, put, execState)
 import Data.Array as A
 import System.Random (getStdGen, randomR, randomRs, RandomGen(..))
 
@@ -44,16 +44,24 @@ createLevel = do
     g <- getStdGen
     return $ randomLevel gameWidth gameHeight gameDepth g
 
-smoothGame :: GameState ()
-smoothGame = do
-    game <- get
-    let world = game^.level
-        ixs = A.indices world
+type LevelState = State GameLevel
+
+smoothWorld :: LevelState ()
+smoothWorld = do
+    world <- get
+    let ixs = A.indices world
         tiles = map (newElem world) (map reverseCoord ixs)
         world' = list2GameLevel tiles
-    level .= world'
+    put world'
     where newElem :: GameLevel -> Coord -> Tile
           newElem world ix = if floors >= walls then floor else wall
               where neighbors = neighbors8 ix world
                     floors = length $ filter (== floor) neighbors
                     walls = (length neighbors) - floors
+
+smoothGame :: GameState ()
+smoothGame = do
+    game <- get
+    let world = game^.level
+        world' = (execState smoothWorld) world
+    level .= world'

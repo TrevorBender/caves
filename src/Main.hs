@@ -3,9 +3,11 @@
 module Main where
 
 import Prelude hiding (floor)
-import System.Console.ANSI
+
 import Control.Lens
+import Control.Monad (replicateM_)
 import Control.Monad.State (execState)
+import System.Console.ANSI
 import System.IO (hGetChar, hGetEcho, hSetEcho, stdin)
 import System.Random (getStdGen, randomR, randomRs, RandomGen(..))
 
@@ -26,10 +28,11 @@ createPlayer loc = Creature
 createGame :: IO Game
 createGame = do
     level <- createLevel
+    let world = (execState $ replicateM_ 3 smoothWorld) level
     g <- getStdGen
     let thePlayer = createPlayer (0, 0, 0)
         game = Game { _uis = [ Start ]
-                    , _level = level
+                    , _level = world
                     , _player = thePlayer
                     }
         playerLoc = findEmptyLocation g 0 game

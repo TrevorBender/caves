@@ -39,7 +39,9 @@ drawLevel :: Game -> IO ()
 drawLevel game = do
     drawBlock 0 0 lvl
     drawPlayer game
-    where rows = splitBy gameWidth $ elems $ game^.level
+    where (_,_,depth) = game^.player.location
+          lvl2d = (splitBy (gameWidth * gameHeight) $ elems $ game^.level) !! depth
+          rows = splitBy gameWidth lvl2d
           lvl = map row2str rows
           row2str = foldr (\tile str -> (tile^.glyph) : str) ""
 
@@ -51,7 +53,7 @@ resetColor = setSGR [ SetColor Foreground Vivid Black ]
 
 drawCreature :: Creature -> IO ()
 drawCreature creature = do
-    let (x,y) = creature^.location
+    let (x,y,_) = creature^.location
         glyph = creature^.c_glyph
         color = creature^.c_color
     setSGR [ SetColor Foreground Vivid color ]

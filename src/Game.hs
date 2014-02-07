@@ -6,13 +6,14 @@ import Control.Lens
 import Data.Array
 import System.Console.ANSI
 
-gameWidth, gameHeight :: Int
+gameWidth, gameHeight, gameDepth :: Int
 gameWidth = 80
 gameHeight = 30
+gameDepth = 2
 
 data Screen = Start | Win | Lose | Play deriving (Show)
 
-type Coord = (Int, Int)
+type Coord = (Int, Int, Int)
 
 data Creature = Creature
     { _location :: Coord
@@ -33,7 +34,7 @@ instance Eq Tile where
     -- (==) :: Tile -> Tile -> Bool
     (==) a b = a^.kind == b^.kind
 
-type GameLevel = Array (Int,Int) Tile
+type GameLevel = Array (Int,Int,Int) Tile
 
 data Game = Game
     { _uis   :: [Screen]

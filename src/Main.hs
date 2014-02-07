@@ -28,12 +28,12 @@ createGame :: IO Game
 createGame = do
     level <- createLevel
     g <- getStdGen
-    let thePlayer = createPlayer (0, 0)
+    let thePlayer = createPlayer (0, 0, 0)
         game = Game { _uis = [ Start ]
                     , _level = level
                     , _player = thePlayer
                     }
-        playerLoc = findEmptyLocation g game
+        playerLoc = findEmptyLocation g 0 game
     return $ (player.location .~ playerLoc) game
 
 gameLoop :: Game -> IO ()

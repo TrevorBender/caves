@@ -45,35 +45,48 @@ processInputScreen Play ch =
          'u' -> movePlayer NE
          'b' -> movePlayer SW
          'n' -> movePlayer SE
+         '>' -> climb Down
+         '<' -> climb Up
          _ -> return ()
+
+data Climb = Up | Down
 
 data Direction = N | E | S | W
                | NE | SE | SW | NW
 
 offsetDir :: Direction -> Coord
-offsetDir N = (0, -1)
-offsetDir E = (1, 0)
-offsetDir S = (0, 1)
-offsetDir W = (-1, 0)
+offsetDir N = (0, -1, 0)
+offsetDir E = (1,  0, 0)
+offsetDir S = (0,  1, 0)
+offsetDir W = (-1, 0, 0)
 offsetDir NE = (offsetDir N) <+> (offsetDir E)
 offsetDir SE = (offsetDir S) <+> (offsetDir E)
 offsetDir SW = (offsetDir S) <+> (offsetDir W)
 offsetDir NW = (offsetDir N) <+> (offsetDir W)
 
+offsetClimb :: Climb -> Coord
+offsetClimb Up   = (0, 0, -1)
+offsetClimb Down = (0, 0,  1)
+
 (<+>) :: Coord -> Coord -> Coord
-(x,y) <+> (x',y') = (x + x',y + y')
+(x,y,z) <+> (x',y',z') = (x + x',y + y',z+z')
 
 inBounds :: Coord -> Bool
-inBounds (x,y) = x >= 0
+inBounds (x,y,z) = x >= 0
               && y >= 0
+              && z >= 0
               && x < gameWidth
               && y < gameHeight
+              && z < gameDepth
 
-movePlayer :: Direction -> GameState ()
-movePlayer dir = do
+climb :: Climb -> GameState ()
+climb = move . offsetClimb
+        
+move :: Coord -> GameState ()
+move offset = do
     game <- get
     let origin = game^.player.location
-        move origin = origin <+> (offsetDir dir)
+        move origin = origin <+> offset
         loc = move origin
     when (inBounds loc) $
         if tileAt game loc == floor
@@ -81,11 +94,14 @@ movePlayer dir = do
            else dig loc
     return ()
 
+movePlayer :: Direction -> GameState ()
+movePlayer = move . offsetDir
+
 dig :: Coord -> GameState ()
-dig (x,y) = do
+dig (x,y,z) = do
     game <- get
     let lvl = game^.level
-        lvl' = lvl//[((y,x), floor)]
+        lvl' = lvl//[((z,y,x), floor)]
     level .= lvl'
 
 

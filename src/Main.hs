@@ -6,10 +6,10 @@ import Prelude hiding (floor)
 
 import Control.Lens
 import Control.Monad (replicateM_)
-import Control.Monad.State.Strict (execState)
+import Control.Monad.State.Strict (execState, get, runState)
 import System.Console.ANSI
 import System.IO (hGetChar, hGetEcho, hSetEcho, stdin)
-import System.Random (getStdGen, randomR, randomRs, RandomGen(..))
+import System.Random (getStdGen, randomR, randomRs, StdGen)
 
 import Draw
 import Game
@@ -25,18 +25,34 @@ createPlayer loc = Creature
     , _c_glyph = '@'
     , _c_color = Blue }
 
+
+populateGame :: StdGen -> GameState ()
+populateGame g = do
+    game <- get
+    let (loc, g') = (runState $ findEmptyLocation 0 game) g
+        fungus = createFungus loc
+    creatures %= (fungus :)
+
+createFungus :: Coord -> Creature
+createFungus loc = Creature
+    { _location = loc
+    , _c_glyph = 'f'
+    , _c_color = Green }
+
 createGame :: IO Game
 createGame = do
     level <- createLevel
-    let world = (execState $ replicateM_ 8 smoothWorld) level
+    let world = (execState $! replicateM_ 8 smoothWorld) level
     g <- getStdGen
     let thePlayer = createPlayer (0, 0, 0)
         game = Game { _uis = [ Start ]
                     , _level = world
                     , _player = thePlayer
+                    , _creatures = []
                     }
-        playerLoc = findEmptyLocation g 0 game
-    return $ (player.location .~ playerLoc) game
+        (playerLoc, g') = (runState $ findEmptyLocation 0 game) g
+    let game' = (player.location .~ playerLoc) game
+    return $ (execState $ populateGame g') game'
 
 gameLoop :: Game -> IO ()
 gameLoop game = do

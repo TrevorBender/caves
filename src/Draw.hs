@@ -1,6 +1,7 @@
 module Draw where
 
 import Control.Lens
+import Control.Monad (forM_)
 import Data.Array
 import System.Console.ANSI
 
@@ -39,6 +40,7 @@ drawLevel :: Game -> IO ()
 drawLevel game = do
     drawBlock 0 0 lvl
     drawPlayer game
+    forM_ (game^.creatures) drawCreature
     where (_,_,depth) = game^.player.location
           lvl2d = (splitBy (gameWidth * gameHeight) $ elems $ game^.level) !! depth
           rows = splitBy gameWidth lvl2d

@@ -6,6 +6,7 @@ import Control.Lens
 import Control.Monad.State.Strict (State)
 import Data.Array
 import System.Console.ANSI
+import System.Random (StdGen)
 
 gameWidth, gameHeight, gameDepth :: Int
 gameWidth = 120
@@ -41,11 +42,13 @@ data Game = Game
     { _uis   :: [Screen]
     , _level :: GameLevel
     , _player :: Creature
+    , _creatures :: [Creature]
     } deriving (Show)
 makeLenses ''Game
 
 type GameState = State Game
 
+type RandomState = State StdGen
 
 ui :: Game -> Screen
 ui game = head $ game^.uis

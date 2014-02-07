@@ -20,13 +20,15 @@ tileAt game = tileAtLevel (game^.level)
 tileAtLevel :: GameLevel -> Coord -> Tile
 tileAtLevel world loc = world ! (reverseCoord loc)
 
-findEmptyLocation :: RandomGen g => g -> Int -> Game -> Coord
-findEmptyLocation g depth game =
+findEmptyLocation :: Int -> Game -> RandomState Coord
+findEmptyLocation depth game = do
+    g <- get
+    let (x, g') = randomR (0, gameWidth-1) g
+        (y, g'') = randomR (0, gameHeight-1) g'
+    put g''
     if (tileAt game (fromIntegral x, fromIntegral y, depth)) == floor
-       then (fromIntegral x, fromIntegral y, depth)
-       else findEmptyLocation g'' depth game
-   where (x, g') = randomR (0, gameWidth-1) g
-         (y, g'') = randomR (0, gameHeight-1) g'
+       then return $ (fromIntegral x, fromIntegral y, depth)
+       else findEmptyLocation depth game
 
 int2Tile :: Int -> Tile
 int2Tile n = [floor, wall] !! n
@@ -55,7 +57,7 @@ smoothWorld = do
     let ixs = A.indices world
         tiles = map (newElem world) (map reverseCoord ixs)
         world' = list2GameLevel tiles
-    put world'
+    put $! world'
     where newElem :: GameLevel -> Coord -> Tile
           newElem world ix = if floors >= walls then floor else wall
               where neighbors = (tileAtLevel world ix) : neighbors8 ix world

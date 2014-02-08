@@ -3,15 +3,16 @@
 module Game where
 
 import Control.Lens
-import Control.Monad.State.Strict (State)
+import Control.Monad.State.Strict (State, get)
 import Data.Array
+import Data.Map.Strict as M (Map)
 import System.Console.ANSI
 import System.Random (StdGen)
 
 gameWidth, gameHeight, gameDepth :: Int
-gameWidth = 120
-gameHeight = 40
-gameDepth = 5
+gameWidth = 80
+gameHeight = 30
+gameDepth = 2
 
 data Screen = Start | Win | Lose | Play deriving (Show)
 
@@ -21,6 +22,10 @@ data Creature = Creature
     { _location :: Coord
     , _c_glyph :: Char
     , _c_color :: Color
+    , _c_id :: Maybe Int
+    , _attack_power :: Int
+    , _hp :: Int
+    , _maxHp :: Int
     } deriving (Show)
 makeLenses ''Creature
 
@@ -42,11 +47,20 @@ data Game = Game
     { _uis   :: [Screen]
     , _level :: GameLevel
     , _player :: Creature
-    , _creatures :: [Creature]
+    , _curId :: Int
+    , _creatures :: M.Map Int Creature
     } deriving (Show)
 makeLenses ''Game
 
 type GameState = State Game
+
+nextInt :: GameState Int
+nextInt = do
+    game <- get
+    let cur = game^.curId
+        next = cur + 1
+    curId .= next
+    return next
 
 type RandomState = State StdGen
 

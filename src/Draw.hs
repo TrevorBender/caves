@@ -2,7 +2,8 @@ module Draw where
 
 import Control.Lens
 import Control.Monad (forM_)
-import Data.Array
+import Data.Array as A
+import Data.Map.Strict as M (elems, filter)
 import System.Console.ANSI
 
 import Game
@@ -40,12 +41,15 @@ drawLevel :: Game -> IO ()
 drawLevel game = do
     drawBlock 0 0 lvl
     drawPlayer game
-    forM_ (game^.creatures) drawCreature
+    forM_ (M.elems $ M.filter sameDepth $ game^.creatures) drawCreature
     where (_,_,depth) = game^.player.location
-          lvl2d = (splitBy (gameWidth * gameHeight) $ elems $ game^.level) !! depth
+          lvl2d = (splitBy (gameWidth * gameHeight) $ A.elems $ game^.level) !! depth
           rows = splitBy gameWidth lvl2d
           lvl = map row2str rows
           row2str = foldr (\tile str -> (tile^.glyph) : str) ""
+          sameDepth c = depth == playerDepth
+            where (_,_,depth) = c^.location
+                  (_,_,playerDepth) = game^.player^.location
 
 drawGame :: Game -> IO ()
 drawGame game = drawScreen (ui game) game

@@ -6,6 +6,8 @@ import Control.Lens
 import Control.Monad (when)
 import Control.Monad.State.Strict (State, modify, execState, get)
 import Data.Array
+import Data.Map.Strict as M (insert, delete)
+import Data.Maybe (fromJust)
 
 import Game
 import World
@@ -51,6 +53,25 @@ processInputScreen Play ch =
 
 climb :: Climb -> GameState ()
 climb = move . offsetClimb
+
+attack :: Creature -> Creature -> GameState()
+attack creature other = do
+    let ap = creature^.attack_power
+        other' = (hp -~ ap) other
+    if other'^.hp < 1 then die other'
+                      else updateCreature other'
+
+die :: Creature -> GameState ()
+die c = do
+    game <- get
+    let cs = delete (fromJust $ c^.c_id) (game^.creatures)
+    creatures .= cs
+
+updateCreature :: Creature -> GameState ()
+updateCreature c = do
+    game <- get
+    let cs = insert (fromJust $ c^.c_id) c (game^.creatures)
+    creatures .= cs
         
 move :: Coord -> GameState ()
 move offset = do
@@ -59,9 +80,12 @@ move offset = do
         move origin = origin <+> offset
         loc = move origin
     when (inBounds loc) $
-        if tileAt game loc == floor
-           then (player.location) .= loc
-           else dig loc
+        case creatureAt game loc of
+             Just other -> attack (game^.player) other
+             Nothing ->
+                 if tileAt game loc == floor
+                    then (player.location) .= loc
+                    else dig loc
     return ()
 
 movePlayer :: Direction -> GameState ()

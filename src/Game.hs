@@ -18,14 +18,16 @@ data Screen = Start | Win | Lose | Play deriving (Show)
 
 type Coord = (Int, Int, Int)
 
+data CreatureKind = Player | Fungus deriving (Show)
 data Creature = Creature
     { _location :: Coord
     , _c_glyph :: Char
     , _c_color :: Color
-    , _c_id :: Maybe Int
+    , _c_id :: Int
     , _attack_power :: Int
     , _hp :: Int
     , _maxHp :: Int
+    , _c_kind :: CreatureKind
     } deriving (Show)
 makeLenses ''Creature
 
@@ -41,13 +43,14 @@ instance Eq Tile where
     -- (==) :: Tile -> Tile -> Bool
     (==) a b = a^.kind == b^.kind
 
-type GameLevel = Array Coord Tile
+type GameWorld = Array Coord Tile
 
 data Game = Game
     { _uis   :: [Screen]
-    , _level :: GameLevel
+    , _world :: GameWorld
     , _player :: Creature
     , _curId :: Int
+    , _stdGen :: StdGen
     , _creatures :: M.Map Int Creature
     } deriving (Show)
 makeLenses ''Game
@@ -61,8 +64,6 @@ nextInt = do
         next = cur + 1
     curId .= next
     return next
-
-type RandomState = State StdGen
 
 ui :: Game -> Screen
 ui game = head $ game^.uis
@@ -104,7 +105,7 @@ inBounds (x,y,z) = x >= 0
 reverseCoord :: Coord -> Coord
 reverseCoord (x, y, z) = (z, y, x)
 
-neighbors8 :: Coord -> GameLevel -> [Tile]
+neighbors8 :: Coord -> GameWorld -> [Tile]
 neighbors8 origin world = tiles
     where dirs = [ N, E, S, W, NE, SE, SW, NW ]
           offsets = map offsetDir dirs

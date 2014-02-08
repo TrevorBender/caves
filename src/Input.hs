@@ -7,7 +7,6 @@ import Control.Monad (when)
 import Control.Monad.State.Strict (State, modify, execState, get)
 import Data.Array
 import Data.Map.Strict as M (insert, delete)
-import Data.Maybe (fromJust)
 
 import Game
 import World (creatureAt, tileAt, floor, wall)
@@ -49,7 +48,6 @@ processInputScreen Play ch =
          '<' -> climb Up
          _ -> return ()
 
-
 climb :: Climb -> GameState ()
 climb = move . offsetClimb
 
@@ -63,13 +61,13 @@ attack creature other = do
 die :: Creature -> GameState ()
 die c = do
     game <- get
-    let cs = delete (fromJust $ c^.c_id) (game^.creatures)
+    let cs = delete (c^.c_id) (game^.creatures)
     creatures .= cs
 
 updateCreature :: Creature -> GameState ()
 updateCreature c = do
     game <- get
-    let cs = insert (fromJust $ c^.c_id) c (game^.creatures)
+    let cs = insert (c^.c_id) c (game^.creatures)
     creatures .= cs
         
 move :: Coord -> GameState ()
@@ -93,9 +91,9 @@ movePlayer = move . offsetDir
 dig :: Coord -> GameState ()
 dig loc = do
     game <- get
-    let lvl = game^.level
+    let lvl = game^.world
         lvl' = lvl//[(reverseCoord loc, floor)]
-    level .= lvl'
+    world .= lvl'
 
 processInput :: Char -> GameState ()
 processInput ch = do

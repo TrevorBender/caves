@@ -58,7 +58,7 @@ drawLevel :: Game -> IO ()
 drawLevel game = do
     drawBlock 0 0 lvl
     where (_,_,depth) = game^.player.location
-          lvl2d = (splitBy (gameWidth * gameHeight) $ A.elems $ game^.level) !! depth
+          lvl2d = (splitBy (gameWidth * gameHeight) $ A.elems $ game^.world) !! depth
           rows = splitBy gameWidth lvl2d
           lvl = map row2str rows
           row2str = foldr (\tile str -> (tile^.glyph) : str) ""

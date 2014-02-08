@@ -10,7 +10,7 @@ import Data.Map.Strict as M (insert, delete)
 import Data.Maybe (fromJust)
 
 import Game
-import World
+import World (creatureAt, tileAt, floor, wall)
 
 getInput :: IO Char
 getInput = getChar
@@ -47,7 +47,6 @@ processInputScreen Play ch =
          'n' -> movePlayer SE
          '>' -> climb Down
          '<' -> climb Up
-         's' -> smoothGame
          _ -> return ()
 
 

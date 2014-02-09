@@ -4,14 +4,14 @@ import Prelude hiding (floor)
 
 import Control.Lens
 import Control.Monad (replicateM_, replicateM, forM)
-import Control.Monad.State.Strict (execState, get, runState)
+import Control.Monad.State.Strict (execState, runState)
 import Data.Array as A (listArray)
 import Data.Map.Strict as M (fromList, union, insert)
 import System.Console.ANSI
 import System.Random as R (getStdGen)
 
 import Game
-import World
+import World (createWorld, smoothWorld, findEmptyLocation, floor)
 
 createPlayer :: Creature
 createPlayer = Creature
@@ -26,7 +26,6 @@ createPlayer = Creature
 
 createFungus :: Int -> GameState Creature
 createFungus depth = do
-    game <- get
     loc <- findEmptyLocation depth
     thisId <- nextInt
     return $ Creature
@@ -43,26 +42,29 @@ fungiPerLevel = 5
 
 populateGame :: GameState ()
 populateGame = do
-    game <- get
     fungi <- forM [0..(gameDepth-1)] $ \depth -> replicateM fungiPerLevel $ createFungus depth
     let fungiMap = M.fromList $ map (\fungus -> (fungus^.c_id, fungus)) (concat fungi)
     creatures %= (union fungiMap)
+
+updateNewGame :: Game -> Game
+updateNewGame = execState $ do
+    createWorld
+    replicateM_ 8 smoothWorld
+    findEmptyLocation 0 >>= (player.location .=)
+    populateGame
+
 
 createGame :: IO Game
 createGame = do
     g <- getStdGen
     let thePlayer = createPlayer
+        emptyWorld = A.listArray ((0,0,0), (0,0,0)) [floor]
         game = Game { _uis = [ Start ]
-                    , _world = A.listArray ((0,0,0),(0,0,0)) []
+                    , _world = emptyWorld
                     , _player = thePlayer
                     , _creatures = M.fromList []
                     , _curId = 0
                     , _stdGen = g
                     }
-    return $ (execState $ do
-        createWorld
-        replicateM_ 8 smoothWorld
-        findEmptyLocation 0 >>= (player.location .=)
-        populateGame
-        ) game
+    return $ updateNewGame game
 

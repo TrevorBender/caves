@@ -105,11 +105,15 @@ inBounds (x,y,z) = x >= 0
 reverseCoord :: Coord -> Coord
 reverseCoord (x, y, z) = (z, y, x)
 
-neighbors8 :: Coord -> GameWorld -> [Tile]
-neighbors8 origin world = tiles
-    where dirs = [ N, E, S, W, NE, SE, SW, NW ]
+neighborsCoords :: Coord -> [Coord]
+neighborsCoords origin = ixs'
+    where dirs = [N,E,S,W,NE,SE,SW,NW]
           offsets = map offsetDir dirs
           ixs = map (origin <+>) offsets
           ixs' = filter inBounds ixs
+
+neighbors8 :: Coord -> GameWorld -> [Tile]
+neighbors8 origin world = tiles
+    where ixs = neighborsCoords origin
           tileAt = (world !) . reverseCoord
-          tiles = map tileAt ixs'
+          tiles = map tileAt ixs

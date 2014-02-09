@@ -7,7 +7,7 @@ import Prelude hiding (floor)
 import Control.Lens
 import Control.Monad (forM_)
 import Control.Monad.State.Strict (execState, get)
-import Data.Map.Strict as M
+import Data.Map.Strict as M (elems)
 import System.Console.ANSI
 import System.IO (hGetEcho, hSetEcho, stdin)
 
@@ -18,7 +18,7 @@ import Generation (createGame)
 import Creature (creatureTick)
 
 emptyUis :: Game -> Bool
-emptyUis game = Prelude.null $ game^.uis
+emptyUis game = null $ game^.uis
 
 tick :: GameState ()
 tick = do

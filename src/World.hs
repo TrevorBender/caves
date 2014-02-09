@@ -15,16 +15,18 @@ import Game
 
 floor = Tile { _kind = Floor , _glyph = '.' }
 wall = Tile { _kind = Wall , _glyph = '#' }
+outOfBounds = Tile { _kind = Wall , _glyph = ' ' }
 
 tileAt :: Game -> Coord -> Tile
 tileAt game = tileAtWorld (game^.world)
 
 tileAtWorld :: GameWorld -> Coord -> Tile
-tileAtWorld world loc = world ! (reverseCoord loc)
+tileAtWorld world loc = if inBounds loc then world ! (reverseCoord loc) else outOfBounds
 
-creatureAt :: Game -> Coord -> Maybe Creature
-creatureAt game loc =
-    case filter (\c -> c^.location == loc) (M.elems (game^.creatures)) of
+creatureAt :: Coord -> GameState (Maybe Creature)
+creatureAt loc = do
+    game <- get
+    return $ case filter (\c -> c^.location == loc) (M.elems (game^.creatures)) of
          [] -> Nothing
          c:_ -> Just c
 
@@ -36,7 +38,8 @@ findEmptyLocation depth = do
         (y, g'') = randomR (0, gameHeight-1) g'
         loc = (fromIntegral x, fromIntegral y, depth)
     stdGen .= g''
-    if tileAt game loc == floor && isNothing (creatureAt game loc)
+    empty <- isEmpty loc
+    if empty
        then return loc
        else findEmptyLocation depth
 
@@ -81,6 +84,11 @@ isFloor loc = do
 
 isCreature :: Coord -> GameState Bool
 isCreature loc = do
-    game <- get
-    return $ isJust $ creatureAt game loc
+    creature <- creatureAt loc
+    return $ isJust creature
 
+isEmpty :: Coord -> GameState Bool
+isEmpty loc = do
+    tileOK <- isFloor loc
+    hasCreature <- isCreature loc
+    return $ tileOK && (not hasCreature)

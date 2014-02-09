@@ -9,7 +9,7 @@ import Data.Array
 
 import Game
 import Creature (attack)
-import World (creatureAt, tileAt, floor, wall)
+import World (creatureAt, isFloor, floor)
 
 getInput :: IO Char
 getInput = getChar
@@ -57,11 +57,13 @@ move offset = do
     let origin = game^.player.location
         move origin = origin <+> offset
         loc = move origin
-    when (inBounds loc) $
-        case creatureAt game loc of
+    when (inBounds loc) $ do
+        mc <- creatureAt loc
+        canMove <- isFloor loc
+        case mc of
              Just other -> attack (game^.player) other
              Nothing ->
-                 if tileAt game loc == floor
+                 if canMove
                     then (player.location) .= loc
                     else dig loc
     return ()

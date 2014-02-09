@@ -6,6 +6,7 @@ import System.Random as R (randomR)
 
 import Game
 
+-- | Random number in a range
 randomR :: (Int,Int) -> GameState Int
 randomR range = do
     game <- get
@@ -14,6 +15,7 @@ randomR range = do
     stdGen .= g'
     return x
 
+-- | Random element from a list 
 randomL :: [a] -> GameState a
 randomL xs = do
     game <- get

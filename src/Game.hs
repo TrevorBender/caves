@@ -6,37 +6,38 @@ import Control.Lens
 import Control.Monad.State.Strict (State, get)
 import Data.Array
 import Data.Map.Strict as M (Map)
-import System.Console.ANSI
 import System.Random (StdGen)
+import UI.HSCurses.Curses
+import UI.HSCurses.CursesHelper
 
 gameWidth, gameHeight, gameDepth :: Int
-gameWidth = 80
+gameWidth = 90
 gameHeight = 30
-gameDepth = 2
+gameDepth = 5
 
-data Screen = Start | Win | Lose | Play deriving (Show)
+data Screen = Start | Win | Lose | Play
 
 type Coord = (Int, Int, Int)
 
-data CreatureKind = Player | Fungus deriving (Show)
+data CreatureKind = Player | Fungus
 data Creature = Creature
     { _location :: Coord
     , _c_glyph :: Char
-    , _c_color :: Color
+    , _c_style :: Int
     , _c_id :: Int
     , _attack_power :: Int
     , _hp :: Int
     , _maxHp :: Int
     , _c_kind :: CreatureKind
-    } deriving (Show)
+    }
 makeLenses ''Creature
 
-data TileKind = Floor | Wall deriving (Show, Eq)
+data TileKind = Floor | Wall deriving (Eq)
 
 data Tile = Tile
     { _kind  :: TileKind
     , _glyph :: Char
-    } deriving (Show)
+    }
 makeLenses ''Tile
 
 instance Eq Tile where
@@ -49,10 +50,14 @@ data Game = Game
     { _uis   :: [Screen]
     , _world :: GameWorld
     , _player :: Creature
+    , _creatures :: M.Map Int Creature
+
     , _curId :: Int
     , _stdGen :: StdGen
-    , _creatures :: M.Map Int Creature
-    } deriving (Show)
+
+    , _window :: Window
+    , _styles :: [CursesStyle]
+    }
 makeLenses ''Game
 
 type GameState = State Game
@@ -64,6 +69,9 @@ nextInt = do
         next = cur + 1
     curId .= next
     return next
+
+nthStyle :: Int -> Game -> CursesStyle
+nthStyle n game = (game^.styles) !! n
 
 ui :: Game -> Screen
 ui game = head $ game^.uis

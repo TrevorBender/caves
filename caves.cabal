@@ -20,11 +20,11 @@ executable caves
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base >=4.6 && <4.7
-                     , ansi-terminal
                      , lens
                      , random
                      , mtl
                      , containers
                      , array
+                     , hscurses
   hs-source-dirs:      src
   default-language:    Haskell2010

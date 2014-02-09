@@ -6,50 +6,51 @@ import Control.Lens
 import Control.Monad (when)
 import Control.Monad.State.Strict (get)
 import Data.Array
+import UI.HSCurses.Curses as C
 
 import Game
 import Creature (attack)
 import World (creatureAt, isFloor, floor)
 
-getInput :: IO Char
-getInput = getChar
+getInput :: IO Key
+getInput = getCh
 
-processInputScreen :: Screen -> Char -> GameState ()
-processInputScreen Start ch =
-    case ch of
-         '\n' -> uis .= [Play]
-         'q' -> uis .= []
+processInputScreen :: Screen -> Key -> GameState ()
+processInputScreen Start key =
+    case key of
+         KeyChar '\n' -> uis .= [Play]
+         KeyChar 'q' -> uis .= []
          _ -> return ()
 
-processInputScreen Win ch =
-    case ch of
-         '\ESC' -> uis .= []
+processInputScreen Win key =
+    case key of
+         KeyChar '\ESC' -> uis .= []
          _ -> uis .= [Start]
 
-processInputScreen Lose ch =
-    case ch of
-         '\ESC' -> uis .= []
+processInputScreen Lose key =
+    case key of
+         KeyChar '\ESC' -> uis .= []
          _ -> uis .= [Start]
 
-processInputScreen Play ch =
-    case ch of
-         '\n' -> uis .= [Win]
-         '\DEL' -> uis .= [Lose]
-         'q' -> uis .= []
-         'h' -> movePlayer W
-         'l' -> movePlayer E
-         'k' -> movePlayer N
-         'j' -> movePlayer S
-         'y' -> movePlayer NW
-         'u' -> movePlayer NE
-         'b' -> movePlayer SW
-         'n' -> movePlayer SE
-         '>' -> climb Down
-         '<' -> climb Up
+processInputScreen Play key =
+    case key of
+         KeyChar '\n' -> uis .= [Win]
+         KeyChar '\DEL' -> uis .= [Lose]
+         KeyChar 'q' -> uis .= []
+         KeyChar 'h' -> movePlayer W
+         KeyChar 'l' -> movePlayer E
+         KeyChar 'k' -> movePlayer N
+         KeyChar 'j' -> movePlayer S
+         KeyChar 'y' -> movePlayer NW
+         KeyChar 'u' -> movePlayer NE
+         KeyChar 'b' -> movePlayer SW
+         KeyChar 'n' -> movePlayer SE
+         KeyChar '>' -> climb Down
+         KeyChar '<' -> climb Up
          _ -> return ()
 
 climb :: Climb -> GameState ()
-climb = move . offsetClimb
+climb = Input.move . offsetClimb
 
 move :: Coord -> GameState ()
 move offset = do
@@ -69,7 +70,7 @@ move offset = do
     return ()
 
 movePlayer :: Direction -> GameState ()
-movePlayer = move . offsetDir
+movePlayer = Input.move . offsetDir
 
 dig :: Coord -> GameState ()
 dig loc = do
@@ -78,7 +79,7 @@ dig loc = do
         lvl' = lvl//[(reverseCoord loc, floor)]
     world .= lvl'
 
-processInput :: Char -> GameState ()
-processInput ch = do
+processInput :: Key -> GameState ()
+processInput key = do
     game <- get
-    processInputScreen (ui game) ch
+    processInputScreen (ui game) key

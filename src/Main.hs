@@ -6,7 +6,7 @@ import Prelude hiding (floor)
 
 import Control.Lens
 import Control.Monad (forM_)
-import Control.Monad.State.Strict (execState, get)
+import Control.Monad.State.Strict (execState, get, evalStateT)
 import Data.Map.Strict as M (elems)
 import System.IO (hGetEcho, hSetEcho, stdin)
 import UI.HSCurses.Curses
@@ -36,8 +36,7 @@ tick = do
 gameLoop :: Game -> IO ()
 gameLoop game = do
     erase
-    resetColor
-    drawGame game
+    evalStateT drawGame game
     ch <- getInput
     let game' = (execState $ processInput ch >> tick) game
     if emptyUis game'

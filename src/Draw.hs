@@ -2,6 +2,7 @@ module Draw where
 
 import Control.Lens
 import Control.Monad (forM_, when)
+import Control.Monad.State.Strict as S
 import Data.Array as A
 import Data.Map.Strict as M (elems, filter)
 import UI.HSCurses.Curses
@@ -9,62 +10,68 @@ import UI.HSCurses.CursesHelper
 
 import Game
 
-drawGame :: Game -> IO ()
-drawGame game = do
-    drawScreen (ui game) game
-    refresh
+type GameIOState = StateT Game IO
 
-drawBlock :: Game -> Int -> Int -> [String] -> IO ()
-drawBlock game y x = (mapM_ $ \(i, s) -> do
-    mvWAddStr (game^.window) (y + i) x s
-    ) . zip [0..]
+drawGame :: GameIOState ()
+drawGame = do
+    game <- get
+    resetColor
+    drawScreen (ui game)
+    liftIO refresh
 
-drawStr :: Game -> Int -> Int -> String -> IO ()
-drawStr game y x str = mvWAddStr (game^.window) y x str
+drawBlock :: Int -> Int -> [String] -> GameIOState ()
+drawBlock y x strs = get >>= \game ->
+    mapM_  (\(i, s) -> liftIO $ mvWAddStr (game^.window) (y + i) x s)
+    (zip [0..] strs)
 
-drawScreen :: Screen -> Game -> IO ()
-drawScreen Start game = do
-    drawStr game 4 4 "Welcome to the Caves of Slight Danger"
-    drawBlock game 15 4 [ "Press [enter] to Start Playing"
-                        , "Press [q] to Quit" ]
+drawStr :: Int -> Int -> String -> GameIOState ()
+drawStr y x str = get >>= \game -> liftIO $ mvWAddStr (game^.window) y x str
 
-drawScreen Win game = do
-    drawStr game 4 4 "You WIN!"
-    drawBlock game 15 4 [ "Press [esc] to Quit"
-                        , "Press <Anything> to Go back to Start" ]
+drawScreen :: Screen -> GameIOState ()
+drawScreen Start = do
+    drawStr 4 4 "Welcome to the Caves of Slight Danger"
+    drawBlock 15 4 [ "Press [enter] to Start Playing"
+                   , "Press [q] to Quit" ]
 
-drawScreen Lose game = do
-    drawStr game 4 4 "You LOSE!"
-    drawBlock game 15 4 [ "Press [esc] to Quit"
-                        , "Press <Anything> to Go back to Start" ]
+drawScreen Win = do
+    drawStr 4 4 "You WIN!"
+    drawBlock 15 4 [ "Press [esc] to Quit"
+                   , "Press <Anything> to Go back to Start" ]
 
-drawScreen Play game = do
-    drawLevel game
-    drawPlayer game
-    drawCreatures game
-    drawHud game
+drawScreen Lose = do
+    drawStr 4 4 "You LOSE!"
+    drawBlock 15 4 [ "Press [esc] to Quit"
+                   , "Press <Anything> to Go back to Start" ]
 
-drawHud :: Game -> IO ()
-drawHud game = do
+drawScreen Play = do
+    drawLevel
+    drawPlayer
+    drawCreatures
+    drawHud
+
+drawHud :: GameIOState ()
+drawHud = get >>= \game -> do
     let p = game^.player
     resetColor
-    drawStr game gameHeight 0 $
+    drawStr gameHeight 0 $
         "loc=" ++ show (p^.location) ++ " hp=[" ++ show (p^.hp) ++ "/" ++ show (p^.maxHp) ++ "]"
 
-getOffsets :: Game -> IO (Int, Int)
-getOffsets game = do
-    (sh,sw) <- scrSize
+getOffsets :: GameIOState (Int, Int)
+getOffsets = do
+    game <- get
+    (sh,sw) <- liftIO scrSize
     let (px,py,_) = game^.player^.location
         offsetX = max 0 (min (px - (sw `div` 2)) (gameWidth - sw))
         offsetY = max 0 (min (py - (sh `div` 2)) (gameHeight - sh))
     return (offsetX, offsetY)
 
-drawCreatures :: Game -> IO ()
-drawCreatures game = do
-    forM_ (M.elems $ M.filter sameDepth $ game^.creatures) (drawCreature game)
-    where sameDepth c = depth == playerDepth
+drawCreatures :: GameIOState ()
+drawCreatures = do
+    game <- get
+    forM_ (M.elems $ M.filter (sameDepth (game^.player)) $ game^.creatures) drawCreature
+    where sameDepth p c = depth == playerDepth
             where (_,_,depth) = c^.location
-                  (_,_,playerDepth) = game^.player^.location
+                  (_,_,playerDepth) = p^.location
 
 block :: Int -> Int -> [a] -> [a]
 block offset size = take size . drop offset
@@ -72,43 +79,45 @@ block offset size = take size . drop offset
 block2d :: (Int,Int) -> (Int,Int) -> [[a]] -> [[a]]
 block2d (xOffset,width) (yOffset,height) xs = map (Draw.block xOffset width) (Draw.block yOffset height xs)
 
-drawLevel :: Game -> IO ()
-drawLevel game = do
-    offsets <- getOffsets game
-    sSize <- scrSize
-    drawBlock game 0 0 (lvl offsets sSize)
-    where (_,_,depth) = game^.player.location
-          lvl2d = (splitBy (gameWidth * gameHeight) $ A.elems $ game^.world) !! depth
-          rows = splitBy gameWidth lvl2d
-          blocks (ox,oy) (sh,sw) = block2d (ox, sw) (oy, sh) rows
-          lvl offsets sSize = map row2str (blocks offsets sSize)
-          row2str = foldr (\tile str -> (tile^.glyph) : str) ""
+drawLevel :: GameIOState ()
+drawLevel = do
+    game <- get
+    offsets <- getOffsets
+    sSize <- liftIO scrSize
+    let (_,_,depth) = game^.player.location
+        lvl2d = (splitBy (gameWidth * gameHeight) $ A.elems $ game^.world) !! depth
+        rows = splitBy gameWidth lvl2d
+        blocks (ox,oy) (sh,sw) = block2d (ox, sw) (oy, sh) rows
+        lvl offsets sSize = map row2str (blocks offsets sSize)
+        row2str = foldr (\tile str -> (tile^.glyph) : str) ""
+    drawBlock 0 0 (lvl offsets sSize)
 
-resetColor :: IO ()
-resetColor = resetStyle
+resetColor :: GameIOState ()
+resetColor = liftIO resetStyle
 
-inScreenBounds :: Game -> Int -> Int -> IO Bool
-inScreenBounds game gx gy = do
-    (sx,sy) <- getScreenCoords game gx gy
-    (sh,sw) <- scrSize
+inScreenBounds :: Int -> Int -> GameIOState Bool
+inScreenBounds gx gy = do
+    (sx,sy) <- getScreenCoords gx gy
+    (sh,sw) <- liftIO scrSize
     return $ sx >= 0 && sx < sw
           && sy >= 0 && sy < sh
 
-getScreenCoords:: Game -> Int -> Int -> IO (Int, Int)
-getScreenCoords game x y = do
-    (ox,oy) <- getOffsets game
+getScreenCoords:: Int -> Int -> GameIOState (Int, Int)
+getScreenCoords x y = do
+    (ox,oy) <- getOffsets
     return (x - ox, y - oy)
 
-drawCreature :: Game -> Creature -> IO ()
-drawCreature game creature = do
+drawCreature :: Creature -> GameIOState ()
+drawCreature creature = do
+    game <- get
     let (x,y,_) = creature^.location
-    visible <- inScreenBounds game x y
+    visible <- inScreenBounds x y
     when visible $ do
-        (sx,sy) <- getScreenCoords game x y
+        (sx,sy) <- getScreenCoords x y
         let glyph = creature^.c_glyph
             cstyle = nthStyle (creature^.c_style) game
-        setStyle cstyle
-        drawStr game sy sx [glyph]
+        liftIO $ setStyle cstyle
+        drawStr sy sx [glyph]
 
-drawPlayer :: Game -> IO ()
-drawPlayer game = drawCreature game (game^.player)
+drawPlayer :: GameIOState ()
+drawPlayer = get >>= \game -> drawCreature (game^.player)

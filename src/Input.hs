@@ -4,11 +4,11 @@ import Prelude hiding (floor)
 
 import Control.Lens
 import Control.Monad (when)
-import Control.Monad.State.Strict (State, modify, execState, get)
+import Control.Monad.State.Strict (get)
 import Data.Array
-import Data.Map.Strict as M (insert, delete)
 
 import Game
+import Creature (attack)
 import World (creatureAt, tileAt, floor, wall)
 
 getInput :: IO Char
@@ -51,25 +51,6 @@ processInputScreen Play ch =
 climb :: Climb -> GameState ()
 climb = move . offsetClimb
 
-attack :: Creature -> Creature -> GameState()
-attack creature other = do
-    let ap = creature^.attack_power
-        other' = (hp -~ ap) other
-    if other'^.hp < 1 then die other'
-                      else updateCreature other'
-
-die :: Creature -> GameState ()
-die c = do
-    game <- get
-    let cs = delete (c^.c_id) (game^.creatures)
-    creatures .= cs
-
-updateCreature :: Creature -> GameState ()
-updateCreature c = do
-    game <- get
-    let cs = insert (c^.c_id) c (game^.creatures)
-    creatures .= cs
-        
 move :: Coord -> GameState ()
 move offset = do
     game <- get

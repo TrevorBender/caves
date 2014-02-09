@@ -7,7 +7,7 @@ import Prelude hiding (floor)
 import Control.Lens
 import Control.Monad.State.Strict (State, get, put, execState)
 import Data.Array as A
-import Data.Maybe (isNothing)
+import Data.Maybe (isNothing, isJust)
 import Data.Map.Strict as M (elems)
 import System.Random (getStdGen, randomR, randomRs, StdGen)
 
@@ -73,3 +73,14 @@ smoothWorld = do
               where neighbors = (tileAtWorld world ix) : neighbors8 ix world
                     floors = length $ filter (== floor) neighbors
                     walls = (length neighbors) - floors
+
+isFloor :: Coord -> GameState Bool
+isFloor loc = do
+    game <- get
+    return $ (tileAt game loc) == floor
+
+isCreature :: Coord -> GameState Bool
+isCreature loc = do
+    game <- get
+    return $ isJust $ creatureAt game loc
+

@@ -14,7 +14,8 @@ import System.IO (hGetEcho, hSetEcho, stdin)
 import Draw (drawGame, resetColor)
 import Game
 import Input (getInput, processInput)
-import Generation (createGame, creatureTick)
+import Generation (createGame)
+import Creature (creatureTick)
 
 emptyUis :: Game -> Bool
 emptyUis game = Prelude.null $ game^.uis

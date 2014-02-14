@@ -10,7 +10,7 @@ import UI.HSCurses.Curses as C
 
 import Game
 import Creature (attack)
-import World (creatureAt, isFloor, floor)
+import World (creatureAt, isFloor, floor, tileAt, stairsDown, stairsUp)
 
 getInput :: IO Key
 getInput = getCh
@@ -50,7 +50,23 @@ processInputScreen Play key =
          _ -> return ()
 
 climb :: Climb -> GameState ()
-climb = Input.move . offsetClimb
+climb dir = do
+    game <- get
+    let loc@(_,_,depth) = game^.player^.location
+        tile = tileAt game loc
+    when (tile == stairsDown && dir == Down) $
+        Input.move $ offsetClimb dir
+    when (tile == stairsUp && dir == Up) $ do
+        when (depth == 0) $
+            return () -- TODO win
+        when (depth /= 0) $
+            Input.move $ offsetClimb dir
+
+canMove :: Coord -> GameState Bool
+canMove loc = do
+    game <- get
+    let tile = tileAt game loc
+    return $ tile^.kind `elem` [ Floor, StairsUp, StairsDown ]
 
 move :: Coord -> GameState ()
 move offset = do
@@ -60,7 +76,7 @@ move offset = do
         loc = move origin
     when (inBounds loc) $ do
         mc <- creatureAt loc
-        canMove <- isFloor loc
+        canMove <- canMove loc
         case mc of
              Just other -> attack (game^.player) other
              Nothing ->

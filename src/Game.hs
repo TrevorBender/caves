@@ -32,7 +32,7 @@ data Creature = Creature
     }
 makeLenses ''Creature
 
-data TileKind = Floor | Wall deriving (Eq)
+data TileKind = Floor | Wall | StairsUp | StairsDown  deriving (Eq)
 
 data Tile = Tile
     { _kind  :: TileKind
@@ -80,7 +80,7 @@ splitBy :: Int -> [a] -> [[a]]
 splitBy width [] = []
 splitBy width xs = (take width xs) : (splitBy width (drop width xs))
 
-data Climb = Up | Down
+data Climb = Up | Down deriving (Eq)
 
 data Direction = N | E | S | W
                | NE | SE | SW | NW

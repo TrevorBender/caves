@@ -16,6 +16,8 @@ import Game
 floor = Tile { _kind = Floor , _glyph = '.' }
 wall = Tile { _kind = Wall , _glyph = '#' }
 outOfBounds = Tile { _kind = Wall , _glyph = ' ' }
+stairsDown = Tile { _kind = StairsDown , _glyph = '>' }
+stairsUp = Tile { _kind = StairsUp , _glyph = '<' }
 
 tileAt :: Game -> Coord -> Tile
 tileAt game = tileAtWorld (game^.world)

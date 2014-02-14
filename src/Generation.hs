@@ -3,9 +3,9 @@ module Generation where
 import Prelude hiding (floor)
 
 import Control.Lens
-import Control.Monad (replicateM_, replicateM, forM)
+import Control.Monad (replicateM_, replicateM, forM, forM_)
 import Control.Monad.State.Strict (execState, runState)
-import Data.Array as A (listArray)
+import Data.Array as A (listArray, (//))
 import Data.Map.Strict as M (fromList, union, insert)
 import Data.Maybe (fromJust)
 import System.Random as R (getStdGen)
@@ -13,7 +13,7 @@ import UI.HSCurses.Curses
 import UI.HSCurses.CursesHelper
 
 import Game
-import World (createWorld, smoothWorld, findEmptyLocation, floor)
+import World (createWorld, smoothWorld, findEmptyLocation, floor, isEmpty, stairsUp, stairsDown)
 
 createPlayer :: Creature
 createPlayer = Creature
@@ -48,13 +48,40 @@ populateGame = do
     let fungiMap = M.fromList $ map (\fungus -> (fungus^.c_id, fungus)) (concat fungi)
     creatures %= (union fungiMap)
 
+createVictoryStairs :: GameState ()
+createVictoryStairs = do
+    loc <- findEmptyLocation 0
+    empty <- isEmpty loc
+    if empty
+       then world %= (//[(reverseCoord loc, stairsUp)])
+       else createVictoryStairs
+
+createStairs :: GameState ()
+createStairs = do
+    forM_ [0..(gameDepth - 2)] $ \depth -> do
+        createStairDown depth
+    createVictoryStairs
+
+createStairDown :: Int -> GameState ()
+createStairDown depth = do
+    loc <- findEmptyLocation depth
+    let lowerLoc = loc <+> offsetClimb Down
+    thisEmpty <- isEmpty loc
+    lowerEmpty <- isEmpty lowerLoc
+    if thisEmpty && lowerEmpty
+       then do
+           world %= (//[(reverseCoord loc, stairsDown)])
+           world %= (//[(reverseCoord lowerLoc, stairsUp)])
+       else createStairDown depth
+
+
 updateNewGame :: Game -> Game
 updateNewGame = execState $ do
     createWorld
     replicateM_ 8 smoothWorld
+    createStairs
     findEmptyLocation 0 >>= (player.location .=)
     populateGame
-
 
 createGame :: Window -> [CursesStyle] -> IO Game
 createGame win cstyles = do

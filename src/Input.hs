@@ -19,24 +19,23 @@ processInputScreen :: Screen -> Key -> GameState ()
 processInputScreen Start key =
     case key of
          KeyChar '\n' -> uis .= [Play]
-         KeyChar 'q' -> uis .= []
+         KeyChar 'q' -> quit
          _ -> return ()
 
 processInputScreen Win key =
     case key of
-         KeyChar '\ESC' -> uis .= []
+         KeyChar '\ESC' -> quit
          _ -> uis .= [Start]
 
 processInputScreen Lose key =
     case key of
-         KeyChar '\ESC' -> uis .= []
+         KeyChar '\ESC' -> quit
          _ -> uis .= [Start]
 
 processInputScreen Play key =
     case key of
-         KeyChar '\n' -> uis .= [Win]
-         KeyChar '\DEL' -> uis .= [Lose]
-         KeyChar 'q' -> uis .= []
+         KeyChar '\DEL' -> lose
+         KeyChar 'q' -> quit
          KeyChar 'h' -> movePlayer W
          KeyChar 'l' -> movePlayer E
          KeyChar 'k' -> movePlayer N
@@ -58,7 +57,7 @@ climb dir = do
         Input.move $ offsetClimb dir
     when (tile == stairsUp && dir == Up) $ do
         when (depth == 0) $
-            return () -- TODO win
+            win
         when (depth /= 0) $
             Input.move $ offsetClimb dir
 
@@ -94,6 +93,7 @@ dig loc = do
     let lvl = game^.world
         lvl' = lvl//[(reverseCoord loc, floor)]
     world .= lvl'
+    notify $ "You dig."
 
 processInput :: Key -> GameState ()
 processInput key = do

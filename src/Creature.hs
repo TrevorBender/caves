@@ -3,7 +3,7 @@ module Creature where
 import Prelude hiding (floor)
 
 import Control.Lens
-import Control.Monad (when)
+import Control.Monad (when, unless)
 import Control.Monad.State.Strict (execState, get, runState)
 import Data.Map.Strict as M (fromList, union, insert, delete)
 
@@ -35,18 +35,33 @@ creatureTick' Fungus c = do
 
 creatureTick' _ _ = return ()
 
+action :: Creature -> String -> GameState String
+action c action = get >>= \game -> return $ if c == game^.player then "You " ++ action else c^.name ++ action ++ "s"
+
+target :: Creature -> GameState String
+target c = get >>= \game -> return $ if c == game^.player then "you" else "the " ++ c^.name
+
 attack :: Creature -> Creature -> GameState()
-attack creature other = do
-    let ap = creature^.attack_power
-        other' = (hp -~ ap) other
+attack creature other = get >>= \game -> do
+    let maxAttack = creature^.attack_power - other^.defense
+    attackValue <- randomR (1, maxAttack)
+    let other' = (hp -~ attackValue) other
+    attackStr <- action creature "attack"
+    targetStr <- target other
+    notify $ attackStr ++ " " ++ targetStr ++ " for " ++ show attackValue ++ " damage."
     if other'^.hp < 1 then die other'
                       else updateCreature other'
 
 die :: Creature -> GameState ()
 die c = do
     game <- get
-    let cs = delete (c^.c_id) (game^.creatures)
-    creatures .= cs
+    let isPlayer = c == game^.player
+    when isPlayer $ lose
+    unless isPlayer $ do
+        let cs = delete (c^.c_id) (game^.creatures)
+        creatures .= cs
+        let msg name = "The " ++ name ++ " dies."
+        notify $ msg (c^.name)
 
 updateCreature :: Creature -> GameState ()
 updateCreature c = do

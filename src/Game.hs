@@ -25,12 +25,17 @@ data Creature = Creature
     , _c_glyph :: Char
     , _c_style :: Int
     , _c_id :: Int
+    , _name :: String
     , _attack_power :: Int
+    , _defense :: Int
     , _hp :: Int
     , _maxHp :: Int
     , _c_kind :: CreatureKind
     }
 makeLenses ''Creature
+
+instance Eq Creature where
+    (==) a b = a^.c_id == b^.c_id
 
 data TileKind = Floor | Wall | StairsUp | StairsDown  deriving (Eq)
 
@@ -51,6 +56,7 @@ data Game = Game
     , _world :: GameWorld
     , _player :: Creature
     , _creatures :: M.Map Int Creature
+    , _messages :: [String]
 
     , _curId :: Int
     , _stdGen :: StdGen
@@ -125,3 +131,15 @@ neighbors8 origin world = tiles
     where ixs = neighborsCoords origin
           tileAt = (world !) . reverseCoord
           tiles = map tileAt ixs
+
+notify :: String -> GameState ()
+notify s = messages %= (s:)
+
+lose :: GameState ()
+lose = uis .= [Lose]
+
+quit :: GameState ()
+quit = uis .= []
+
+win :: GameState ()
+win = uis .= [Win]

@@ -22,7 +22,9 @@ createPlayer = Creature
     , _c_glyph = '@'
     , _c_style = 1
     , _c_id = 0
+    , _name = "<fixme: you>"
     , _attack_power = 10
+    , _defense = 3
     , _hp = 40
     , _maxHp = 40 }
 
@@ -36,7 +38,9 @@ createFungus depth = do
         , _c_glyph = 'f'
         , _c_style = 2
         , _c_id = thisId
+        , _name = "lichen"
         , _attack_power = 0
+        , _defense = 1
         , _hp = 1
         , _maxHp = 1 }
 
@@ -92,6 +96,7 @@ createGame win cstyles = do
                     , _world = emptyWorld
                     , _player = thePlayer
                     , _creatures = M.fromList []
+                    , _messages = []
                     , _curId = 0
                     , _stdGen = g
                     , _window = win

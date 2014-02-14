@@ -48,6 +48,12 @@ drawScreen Play = do
     drawPlayer
     drawCreatures
     drawHud
+    drawMessages
+
+drawMessages :: GameIOState ()
+drawMessages = get >>= \game -> do
+    forM_ (zip [1..] (game^.messages)) $ \(i, msg) -> drawStr (gameHeight + i) 5 msg
+    messages .= []
 
 drawHud :: GameIOState ()
 drawHud = get >>= \game -> do

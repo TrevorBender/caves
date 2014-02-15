@@ -1,4 +1,7 @@
-module Input where
+module Input
+    ( processInput
+    , getInput
+    ) where
 
 import Prelude hiding (floor)
 

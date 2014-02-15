@@ -1,4 +1,8 @@
-module Creature where
+module Creature
+    ( creatureTick
+    , attack
+    , canSee
+    ) where
 
 import Prelude hiding (floor)
 
@@ -10,7 +14,8 @@ import Data.Map.Strict as M (fromList, union, insert, delete)
 import Game
 import Random
 import Generation (createFungus)
-import World (isFloor, isCreature)
+import World (isFloor, isCreature, seeThrough)
+import Line (line)
 
 creatureTick :: Creature -> GameState ()
 creatureTick c = creatureTick' (c^.c_kind) c
@@ -69,3 +74,13 @@ updateCreature c = do
     let cs = insert (c^.c_id) c (game^.creatures)
     creatures .= cs
 
+canSee :: Game -> Coord -> Creature -> Bool
+canSee game loc@(x,y,z) c =
+    let (cx,cy,cz) = c^.location
+        sameDepth = z == cz
+        distance = (cx - x) * (cx - x) + (cy - y) * (cy - y)
+        inVision = distance <= (c^.visionRadius) * (c^.visionRadius)
+        ln = line (cx, cy) (x, y)
+        threeD2D (x, y) = (x, y, z)
+        notBlocked = (<= 1) $ length $ dropWhile (seeThrough game . threeD2D) ln
+    in sameDepth && inVision && notBlocked

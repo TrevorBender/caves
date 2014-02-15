@@ -1,4 +1,7 @@
-module Random where
+module Random
+    ( Random.randomR
+    , randomL
+    ) where
 
 import Control.Lens
 import Control.Monad.State.Strict (get)
@@ -15,7 +18,7 @@ randomR range = do
     stdGen .= g'
     return x
 
--- | Random element from a list 
+-- | Random element from a list
 randomL :: [a] -> GameState a
 randomL xs = do
     game <- get

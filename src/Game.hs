@@ -25,19 +25,20 @@ data Creature = Creature
     , _c_glyph :: Char
     , _c_style :: Int
     , _c_id :: Int
+    , _c_kind :: CreatureKind
     , _name :: String
     , _attack_power :: Int
     , _defense :: Int
     , _hp :: Int
     , _maxHp :: Int
-    , _c_kind :: CreatureKind
+    , _visionRadius :: Int
     }
 makeLenses ''Creature
 
 instance Eq Creature where
     (==) a b = a^.c_id == b^.c_id
 
-data TileKind = Floor | Wall | StairsUp | StairsDown  deriving (Eq)
+data TileKind = Floor | Wall | StairsUp | StairsDown | Unknown deriving (Eq)
 
 data Tile = Tile
     { _kind  :: TileKind

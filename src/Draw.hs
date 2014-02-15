@@ -1,4 +1,7 @@
-module Draw where
+module Draw
+    ( drawGame
+    , resetColor
+    ) where
 
 import Control.Lens
 import Control.Monad (forM_, when)
@@ -9,6 +12,8 @@ import UI.HSCurses.Curses
 import UI.HSCurses.CursesHelper
 
 import Game
+import Creature (canSee)
+import World (tileAt, unknownTile)
 
 type GameIOState = StateT Game IO
 
@@ -92,7 +97,8 @@ drawLevel = do
     sSize <- liftIO scrSize
     let (_,_,depth) = game^.player.location
         lvl2d = (splitBy (gameWidth * gameHeight) $ A.elems $ game^.world) !! depth
-        rows = splitBy gameWidth lvl2d
+        lvl2d' = map (\(j,i) -> if canSee game (i,j,depth) (game^.player) then tileAt game (i,j,depth) else unknownTile) [(j,i) | j <- [0..(gameHeight-1)], i <- [0..(gameWidth-1)]]
+        rows = splitBy gameWidth lvl2d'
         blocks (ox,oy) (sh,sw) = block2d (ox, sw) (oy, sh) rows
         lvl offsets sSize = map row2str (blocks offsets sSize)
         row2str = foldr (\tile str -> (tile^.glyph) : str) ""
@@ -116,9 +122,9 @@ getScreenCoords x y = do
 drawCreature :: Creature -> GameIOState ()
 drawCreature creature = do
     game <- get
-    let (x,y,_) = creature^.location
+    let loc@(x,y,_) = creature^.location
     visible <- inScreenBounds x y
-    when visible $ do
+    when (visible && canSee game loc (game^.player)) $ do
         (sx,sy) <- getScreenCoords x y
         let glyph = creature^.c_glyph
             cstyle = nthStyle (creature^.c_style) game

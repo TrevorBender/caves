@@ -18,6 +18,10 @@ wall = Tile { _kind = Wall , _glyph = '#' }
 outOfBounds = Tile { _kind = Wall , _glyph = ' ' }
 stairsDown = Tile { _kind = StairsDown , _glyph = '>' }
 stairsUp = Tile { _kind = StairsUp , _glyph = '<' }
+unknownTile = Tile { _kind = Unknown , _glyph = ' ' }
+
+seeThrough :: Game -> Coord -> Bool
+seeThrough game = (`elem` [Floor, StairsUp, StairsDown]) . (^.kind) . tileAt game
 
 tileAt :: Game -> Coord -> Tile
 tileAt game = tileAtWorld (game^.world)

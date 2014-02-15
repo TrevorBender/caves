@@ -18,6 +18,8 @@ import Input (getInput, processInput)
 import Generation (createGame)
 import Creature (creatureTick)
 
+import Line
+
 -- TODO This feels really ugly
 styles :: [Style]
 styles = [ CH.defaultStyle

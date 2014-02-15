@@ -1,4 +1,7 @@
-module Generation where
+module Generation
+    ( createGame
+    , createFungus
+    ) where
 
 import Prelude hiding (floor)
 
@@ -26,7 +29,9 @@ createPlayer = Creature
     , _attack_power = 10
     , _defense = 3
     , _hp = 40
-    , _maxHp = 40 }
+    , _maxHp = 40
+    , _visionRadius = 20
+    }
 
 createFungus :: Int -> GameState Creature
 createFungus depth = do
@@ -42,7 +47,9 @@ createFungus depth = do
         , _attack_power = 0
         , _defense = 1
         , _hp = 1
-        , _maxHp = 1 }
+        , _maxHp = 1
+        , _visionRadius = 0
+        }
 
 fungiPerLevel = 5
 

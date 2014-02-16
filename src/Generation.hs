@@ -9,7 +9,7 @@ import Control.Lens
 import Control.Monad (replicateM_, replicateM, forM, forM_)
 import Control.Monad.State.Strict (execState, runState)
 import Data.Array as A (listArray, (//))
-import Data.Map.Strict as M (fromList, union, insert)
+import Data.Map.Strict as M (Map, fromList, union, insert)
 import Data.Maybe (fromJust)
 import System.Random as R (getStdGen)
 import UI.HSCurses.Curses
@@ -23,7 +23,7 @@ createPlayer = Creature
     { _location = (0,0,0) -- temporary location
     , _c_kind = Player
     , _c_glyph = '@'
-    , _c_style = 1
+    , _c_style = PlayerStyle
     , _c_id = 0
     , _name = "<fixme: you>"
     , _attack_power = 10
@@ -41,7 +41,7 @@ createFungus depth = do
         { _location = loc
         , _c_kind = Fungus
         , _c_glyph = 'f'
-        , _c_style = 2
+        , _c_style = FungusStyle
         , _c_id = thisId
         , _name = "lichen"
         , _attack_power = 0
@@ -94,7 +94,7 @@ updateNewGame = execState $ do
     findEmptyLocation 0 >>= (player.location .=)
     populateGame
 
-createGame :: Window -> [CursesStyle] -> IO Game
+createGame :: Window -> Map StyleType CursesStyle -> IO Game
 createGame win cstyles = do
     g <- getStdGen
     let thePlayer = createPlayer

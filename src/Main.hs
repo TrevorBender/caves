@@ -7,7 +7,7 @@ import Prelude hiding (floor)
 import Control.Lens
 import Control.Monad (forM_)
 import Control.Monad.State.Strict (execState, get, execStateT)
-import Data.Map.Strict as M (elems)
+import Data.Map.Strict as M (Map, elems, fromAscList, keys)
 import System.IO (hGetEcho, hSetEcho, stdin)
 import UI.HSCurses.Curses
 import UI.HSCurses.CursesHelper as CH
@@ -21,12 +21,12 @@ import World (updateVisibleTiles)
 
 import Line
 
--- TODO This feels really ugly
-styles :: [Style]
-styles = [ CH.defaultStyle
-         , AttributeStyle [Bold] DefaultF DarkBlueB  -- player
-         , AttributeStyle [Bold] GreenF DefaultB     -- fungus
-         , AttributeStyle [Bold] DarkBlueF DefaultB  -- out of sight tile
+styleMap :: Map StyleType Style
+styleMap = M.fromAscList
+         [ (DefaultStyle, CH.defaultStyle)
+         , (PlayerStyle, AttributeStyle [Bold] DefaultF DarkBlueB)
+         , (FungusStyle, AttributeStyle [Bold] GreenF DefaultB)
+         , (OutOfSiteStyle, AttributeStyle [Bold] DarkBlueF DefaultB)
          ]
 
 emptyUis :: Game -> Bool
@@ -53,10 +53,11 @@ main = do
     initCurses
     startColor
     win <- initScr
-    cstyles <- convertStyles Main.styles
+    cstyles <- convertStyles $ elems styleMap
     echo False
     cursSet CursorInvisible
-    createGame win cstyles >>= gameLoop
+    let cstyleMap = M.fromAscList $ zip (keys styleMap) cstyles
+    createGame win cstyleMap >>= gameLoop
     move 0 0
     erase
     echo True

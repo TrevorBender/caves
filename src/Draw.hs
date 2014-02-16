@@ -94,7 +94,7 @@ drawLevel = do
     game <- get
     offsets@(ox,oy) <- getOffsets
     sSize <- liftIO scrSize
-    let cstyle = nthStyle 3 game
+    let cstyle = getStyle OutOfSiteStyle game
     liftIO $ setStyle cstyle
     let (_,_,depth) = game^.player.location
         lvl2d = (splitBy (gameWidth * gameHeight) $ A.elems $ game^.visibleWorld) !! depth
@@ -132,7 +132,7 @@ drawCreature creature = do
     when (visible && canSee game loc (game^.player)) $ do
         (sx,sy) <- getScreenCoords x y
         let glyph = creature^.c_glyph
-            cstyle = nthStyle (creature^.c_style) game
+            cstyle = getStyle (creature^.c_style) game
         liftIO $ setStyle cstyle
         drawStr sy sx [glyph]
 

@@ -4,8 +4,8 @@ module Game where
 
 import Control.Lens
 import Control.Monad.State.Strict (State, get)
-import Data.Array
-import Data.Map.Strict as M (Map)
+import Data.Array as A
+import Data.Map.Strict as M (Map, (!))
 import System.Random (StdGen)
 import UI.HSCurses.Curses
 import UI.HSCurses.CursesHelper
@@ -19,11 +19,13 @@ data Screen = Start | Win | Lose | Play
 
 type Coord = (Int, Int, Int)
 
+data StyleType = DefaultStyle | PlayerStyle | FungusStyle | OutOfSiteStyle deriving (Eq, Ord)
+
 data CreatureKind = Player | Fungus
 data Creature = Creature
     { _location :: Coord
     , _c_glyph :: Char
-    , _c_style :: Int
+    , _c_style :: StyleType
     , _c_id :: Int
     , _c_kind :: CreatureKind
     , _name :: String
@@ -60,11 +62,11 @@ data Game = Game
     , _creatures :: M.Map Int Creature
     , _messages :: [String]
 
-    , _curId :: Int
-    , _stdGen :: StdGen
+    , _curId :: Int     -- for id generation
+    , _stdGen :: StdGen -- for random number generation
 
     , _window :: Window
-    , _styles :: [CursesStyle]
+    , _styles :: Map StyleType CursesStyle
     }
 makeLenses ''Game
 
@@ -78,8 +80,8 @@ nextInt = do
     curId .= next
     return next
 
-nthStyle :: Int -> Game -> CursesStyle
-nthStyle n game = (game^.styles) !! n
+getStyle :: StyleType -> Game -> CursesStyle
+getStyle styleType game = (game^.styles) M.! styleType
 
 ui :: Game -> Screen
 ui game = head $ game^.uis
@@ -131,7 +133,7 @@ neighborsCoords origin = ixs'
 neighbors8 :: Coord -> GameWorld -> [Tile]
 neighbors8 origin world = tiles
     where ixs = neighborsCoords origin
-          tileAt = (world !) . reverseCoord
+          tileAt = (world A.!) . reverseCoord
           tiles = map tileAt ixs
 
 notify :: String -> GameState ()

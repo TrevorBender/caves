@@ -12,8 +12,7 @@ import UI.HSCurses.Curses
 import UI.HSCurses.CursesHelper
 
 import Game
-import Creature (canSee)
-import World (tileAt, unknownTile)
+import World (tileAt, unknownTile, canSee)
 
 type GameIOState = StateT Game IO
 
@@ -93,16 +92,22 @@ block2d (xOffset,width) (yOffset,height) xs = map (Draw.block xOffset width) (Dr
 drawLevel :: GameIOState ()
 drawLevel = do
     game <- get
-    offsets <- getOffsets
+    offsets@(ox,oy) <- getOffsets
     sSize <- liftIO scrSize
+    let cstyle = nthStyle 3 game
+    liftIO $ setStyle cstyle
     let (_,_,depth) = game^.player.location
-        lvl2d = (splitBy (gameWidth * gameHeight) $ A.elems $ game^.world) !! depth
-        lvl2d' = map (\(j,i) -> if canSee game (i,j,depth) (game^.player) then tileAt game (i,j,depth) else unknownTile) [(j,i) | j <- [0..(gameHeight-1)], i <- [0..(gameWidth-1)]]
-        rows = splitBy gameWidth lvl2d'
+        lvl2d = (splitBy (gameWidth * gameHeight) $ A.elems $ game^.visibleWorld) !! depth
+        rows = splitBy gameWidth lvl2d
         blocks (ox,oy) (sh,sw) = block2d (ox, sw) (oy, sh) rows
         lvl offsets sSize = map row2str (blocks offsets sSize)
         row2str = foldr (\tile str -> (tile^.glyph) : str) ""
     drawBlock 0 0 (lvl offsets sSize)
+    let visibleTiles = Prelude.filter (\(loc,tile) -> canSee game (reverseCoord loc) (game^.player)) (A.assocs $ game^.world)
+    let visibleTiles' = map (\((_,y,x), tile) -> ((x-ox, y-oy), tile)) visibleTiles
+    resetColor
+    forM_ visibleTiles' $ \((x,y), tile) ->
+        drawStr y x [tile^.glyph]
 
 resetColor :: GameIOState ()
 resetColor = liftIO resetStyle

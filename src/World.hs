@@ -12,6 +12,7 @@ import Data.Map.Strict as M (elems)
 import System.Random (getStdGen, randomR, randomRs, StdGen)
 
 import Game
+import Line (line)
 
 floor = Tile { _kind = Floor , _glyph = '.' }
 wall = Tile { _kind = Wall , _glyph = '#' }
@@ -19,6 +20,28 @@ outOfBounds = Tile { _kind = Wall , _glyph = ' ' }
 stairsDown = Tile { _kind = StairsDown , _glyph = '>' }
 stairsUp = Tile { _kind = StairsUp , _glyph = '<' }
 unknownTile = Tile { _kind = Unknown , _glyph = ' ' }
+
+canSee :: Game -> Coord -> Creature -> Bool
+canSee game loc@(x,y,z) c =
+    let (cx,cy,cz) = c^.location
+        sameDepth = z == cz
+        distance = (cx - x) * (cx - x) + (cy - y) * (cy - y)
+        inVision = distance <= (c^.visionRadius) * (c^.visionRadius)
+        ln = line (cx, cy) (x, y)
+        threeD2D (x, y) = (x, y, z)
+        notBlocked = (<= 1) $ length $ dropWhile (seeThrough game . threeD2D) ln
+    in sameDepth && inVision && notBlocked
+
+updateVisibleTiles :: GameState ()
+updateVisibleTiles = do
+    game <- get
+    let (_,_,z) = game^.player.location
+        visibleIds = filter (\loc -> canSee game loc (game^.player)) [(x,y,z) | z <- [0..(gameDepth-1)], y <- [0..(gameHeight-1)], x <- [0..(gameWidth-1)]]
+        updates = map (\loc -> (reverseCoord loc, tileAt game loc)) visibleIds
+    visibleWorld %= (// updates)
+
+visibleTileAt :: Game -> Coord -> Tile
+visibleTileAt game loc = if inBounds loc then (game^.visibleWorld) ! (reverseCoord loc) else outOfBounds
 
 seeThrough :: Game -> Coord -> Bool
 seeThrough game = (`elem` [Floor, StairsUp, StairsDown]) . (^.kind) . tileAt game

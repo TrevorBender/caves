@@ -17,14 +17,16 @@ import Game
 import Input (getInput, processInput)
 import Generation (createGame)
 import Creature (creatureTick)
+import World (updateVisibleTiles)
 
 import Line
 
 -- TODO This feels really ugly
 styles :: [Style]
 styles = [ CH.defaultStyle
-         , AttributeStyle [Bold] CyanF DefaultB
-         , AttributeStyle [Bold] GreenF DefaultB
+         , AttributeStyle [Bold] DefaultF DarkBlueB  -- player
+         , AttributeStyle [Bold] GreenF DefaultB     -- fungus
+         , AttributeStyle [Bold] DarkBlueF DefaultB  -- out of sight tile
          ]
 
 emptyUis :: Game -> Bool
@@ -34,6 +36,7 @@ tick :: GameState ()
 tick = do
     game <- get
     forM_ (M.elems $ game^.creatures) creatureTick
+    updateVisibleTiles
 
 gameLoop :: Game -> IO ()
 gameLoop game = do

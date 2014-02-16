@@ -16,7 +16,7 @@ import UI.HSCurses.Curses
 import UI.HSCurses.CursesHelper
 
 import Game
-import World (createWorld, smoothWorld, findEmptyLocation, floor, isEmpty, stairsUp, stairsDown)
+import World
 
 createPlayer :: Creature
 createPlayer = Creature
@@ -99,8 +99,10 @@ createGame win cstyles = do
     g <- getStdGen
     let thePlayer = createPlayer
         emptyWorld = A.listArray ((0,0,0), (0,0,0)) [floor]
+        unknownWorld = A.listArray gameBounds (repeat unknownTile)
         game = Game { _uis = [ Start ]
                     , _world = emptyWorld
+                    , _visibleWorld = unknownWorld
                     , _player = thePlayer
                     , _creatures = M.fromList []
                     , _messages = []

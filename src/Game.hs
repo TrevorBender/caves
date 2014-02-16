@@ -55,6 +55,7 @@ type GameWorld = Array Coord Tile
 data Game = Game
     { _uis   :: [Screen]
     , _world :: GameWorld
+    , _visibleWorld :: GameWorld
     , _player :: Creature
     , _creatures :: M.Map Int Creature
     , _messages :: [String]

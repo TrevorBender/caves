@@ -7,6 +7,8 @@ import Control.Monad.State.Strict (State, get)
 import Data.Array as A
 import Data.Map.Strict as M (Map, (!))
 import System.Random (StdGen)
+import System.IO (hPutStrLn, stderr)
+import System.IO.Unsafe (unsafePerformIO)
 import UI.HSCurses.Curses
 import UI.HSCurses.CursesHelper
 
@@ -14,6 +16,8 @@ gameWidth, gameHeight, gameDepth :: Int
 gameWidth = 90
 gameHeight = 30
 gameDepth = 5
+
+debugOn = False
 
 data Screen = Start | Win | Lose | Play
 
@@ -54,6 +58,11 @@ instance Eq Tile where
 
 type GameWorld = Array Coord Tile
 
+type RegionMap = ( Int                   -- current region num
+                 , Map Coord (Maybe Int) -- map coord to region num
+                 , Map Int [Coord]       -- map region num to coords
+                 )
+
 data Game = Game
     { _uis   :: [Screen]
     , _world :: GameWorld
@@ -64,6 +73,10 @@ data Game = Game
 
     , _curId :: Int     -- for id generation
     , _stdGen :: StdGen -- for random number generation
+
+    -- region map generation
+    , _regionMap :: RegionMap
+    , _drawRegions :: Bool
 
     , _window :: Window
     , _styles :: Map StyleType CursesStyle
@@ -147,3 +160,9 @@ quit = uis .= []
 
 win :: GameState ()
 win = uis .= [Win]
+
+debug :: String -> a -> a
+debug str x = if debugOn then debug' str x else x
+    where debug' str x = unsafePerformIO $ do
+              hPutStrLn stderr str
+              return x

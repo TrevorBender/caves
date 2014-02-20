@@ -1,13 +1,17 @@
 module Draw
     ( drawGame
     , resetColor
+    , toChar
     ) where
 
+import Prelude as P
 import Control.Lens
 import Control.Monad (forM_, when)
 import Control.Monad.State.Strict as S
 import Data.Array as A
-import Data.Map.Strict as M (elems, filter)
+import Data.Char (chr, ord, intToDigit)
+import Data.Map.Strict as M (elems, filter, assocs)
+import Data.Maybe (isJust)
 import UI.HSCurses.Curses
 import UI.HSCurses.CursesHelper
 
@@ -48,7 +52,9 @@ drawScreen Lose = do
                    , "Press <Anything> to Go back to Start" ]
 
 drawScreen Play = do
+    game <- get
     drawLevel
+    when (game^.drawRegions) drawRegionNumbers
     drawPlayer
     drawCreatures
     drawHud
@@ -89,6 +95,25 @@ block offset size = take size . drop offset
 block2d :: (Int,Int) -> (Int,Int) -> [[a]] -> [[a]]
 block2d (xOffset,width) (yOffset,height) xs = map (Draw.block xOffset width) (Draw.block yOffset height xs)
 
+toChar :: Int -> String
+toChar i = [ch]
+    where ch = if i < 10 then intToDigit i else
+               if i < 10 + 25 then chr $ i - 10 + ord 'A' else
+               if i < 10 + 25 + 25 then chr $ i -10 - 25 + ord 'a' else '*'
+
+drawRegionNumbers :: GameIOState ()
+drawRegionNumbers = do
+    game <- get
+    (ox,oy) <- getOffsets
+    (sh,sw) <- liftIO scrSize
+    let (_,_,depth) = game^.player.location
+        (_,rMap,_) = game^.regionMap
+        regionAssocs = P.filter (\((x,y,z),mr) -> z == depth && isJust mr) (M.assocs rMap)
+        regionAssocs' = map (\((x,y,z),Just r) -> ((x-ox, y-oy), r)) regionAssocs
+    forM_ regionAssocs' $ \((x,y), num) -> do
+        inBounds <- inScreenBounds x y
+        if inBounds then drawStr y x (toChar num) else return ()
+
 drawLevel :: GameIOState ()
 drawLevel = do
     game <- get
@@ -103,8 +128,8 @@ drawLevel = do
         lvl offsets sSize = map row2str (blocks offsets sSize)
         row2str = foldr (\tile str -> (tile^.glyph) : str) ""
     drawBlock 0 0 (lvl offsets sSize)
-    let visibleTiles = Prelude.filter (\(loc,tile) -> canSee game (reverseCoord loc) (game^.player)) (A.assocs $ game^.world)
-    let visibleTiles' = map (\((_,y,x), tile) -> ((x-ox, y-oy), tile)) visibleTiles
+    let visibleTiles = P.filter (\(loc,tile) -> canSee game (reverseCoord loc) (game^.player)) (A.assocs $ game^.world)
+        visibleTiles' = map (\((_,y,x), tile) -> ((x-ox, y-oy), tile)) visibleTiles
     resetColor
     forM_ visibleTiles' $ \((x,y), tile) ->
         drawStr y x [tile^.glyph]

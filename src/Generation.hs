@@ -3,13 +3,16 @@ module Generation
     , createFungus
     ) where
 
-import Prelude hiding (floor)
-
+import Prelude as P hiding (floor)
 import Control.Lens
-import Control.Monad (replicateM_, replicateM, forM, forM_)
-import Control.Monad.State.Strict (execState, runState)
-import Data.Array as A (listArray, (//))
-import Data.Map.Strict as M (Map, fromList, union, insert)
+import Control.Monad (replicateM_, replicateM, forM, forM_, foldM, unless)
+import Control.Monad.State.Strict (get, put, modify, execState, runState, State)
+import Data.Array as A (listArray, (//), assocs)
+import Data.List as L (intersect)
+import Data.Map.Strict as M
+    ( Map, empty, fromList, union
+    , insert, notMember, member, foldrWithKey
+    , alter, filter, keys, (!), filterWithKey, delete, mapWithKey)
 import Data.Maybe (fromJust)
 import System.Random as R (getStdGen)
 import UI.HSCurses.Curses
@@ -17,6 +20,7 @@ import UI.HSCurses.CursesHelper
 
 import Game
 import World
+import Random
 
 createPlayer :: Creature
 createPlayer = Creature
@@ -57,7 +61,7 @@ populateGame :: GameState ()
 populateGame = do
     fungi <- forM [0..(gameDepth-1)] $ \depth -> replicateM fungiPerLevel $ createFungus depth
     let fungiMap = M.fromList $ map (\fungus -> (fungus^.c_id, fungus)) (concat fungi)
-    creatures %= (union fungiMap)
+    creatures %= (M.union fungiMap)
 
 createVictoryStairs :: GameState ()
 createVictoryStairs = do
@@ -67,32 +71,117 @@ createVictoryStairs = do
        then world %= (//[(reverseCoord loc, stairsUp)])
        else createVictoryStairs
 
+-- create stairs:
+--
+-- connected = []
+-- for each num in nMap:
+--   for each loc (z < depth-1):
+--     reg = get region for loc (from rMap)
+--     if reg not elem connected then
+--       connect down
+--       add reg to list of overlapping regions
+--
+-- connect_down z r1 r2:
+--
+-- overlap = union nMap[r1] (map \loc -> loc[z-1] nMap[r2])
+-- loc = random from overlap
+-- world // [(loc,stairDn), (loc[z+1],stairsUp)]
+
 createStairs :: GameState ()
 createStairs = do
-    forM_ [0..(gameDepth - 2)] $ \depth -> do
-        createStairDown depth
-    createVictoryStairs
+    game <- get
+    let (_,rMap,nMap) = game^.regionMap
+        rNums = M.keys $ M.filter (\locs -> any (\(_,_,z) -> z < gameDepth - 1) locs) nMap
+    forM_ rNums connectRegionsDown
 
-createStairDown :: Int -> GameState ()
-createStairDown depth = do
-    loc <- findEmptyLocation depth
+connectRegionsDown :: Int -> GameState ()
+connectRegionsDown num = do
+    game <- get
+    let (_,rMap,nMap) = game^.regionMap
+        (_,_,depth) = head $ nMap ! num
+        rBelow = M.keys $ M.filter (\locs -> any (\(_,_,z) -> z == depth + 1) locs) nMap
+    forM_ rBelow (connectRegionDown depth num)
+
+connectRegionDown :: Int -> Int -> Int -> GameState ()
+connectRegionDown depth r1 r2 = do
+    game <- get
+    let (_,_,nMap) = game^.regionMap
+        adjusted = map (\(x,y,z) -> (x,y,z-1)) (nMap ! r2)
+        overlap = intersect (nMap ! r1) adjusted
+    unless (null overlap) $ replicateM_ (ceiling $ fromIntegral (length overlap) / 250) $ do
+        loc <- randomL overlap
+        createStairDown loc
+
+createStairDown :: Coord -> GameState ()
+createStairDown loc = do
     let lowerLoc = loc <+> offsetClimb Down
-    thisEmpty <- isEmpty loc
-    lowerEmpty <- isEmpty lowerLoc
-    if thisEmpty && lowerEmpty
-       then do
-           world %= (//[(reverseCoord loc, stairsDown)])
-           world %= (//[(reverseCoord lowerLoc, stairsUp)])
-       else createStairDown depth
+    world %= (//[(reverseCoord loc, stairsDown), (reverseCoord lowerLoc, stairsUp)])
+    return ()
 
 
 updateNewGame :: Game -> Game
 updateNewGame = execState $ do
     createWorld
     replicateM_ 8 smoothWorld
+    createRegionMap
+    removeSmallRegions
     createStairs
+    createVictoryStairs
     findEmptyLocation 0 >>= (player.location .=)
     populateGame
+
+fillRegion :: Coord                   -- ^ Starting location
+           -> Int                     -- ^ Region number
+           -> GameWorld               -- ^ 3D game world
+           -> RegionMap        -- ^ resulting region map and size
+fillRegion loc num world = execState (dfs' loc world) (num, M.empty, M.empty)
+    where dfs' :: Coord -> GameWorld -> State RegionMap ()
+          dfs' loc world = do
+              (num, regionMap, nMap) <- get
+              let neighbors = neighborsCoords loc
+                  neighbors' = P.filter (\loc -> inBounds loc && (tileAtWorld world loc)^.kind == Floor) neighbors
+                  newNeighbors = P.filter (\loc -> notMember loc regionMap) neighbors'
+                  updateNumMap loc (Just xs) = Just$ loc:xs
+                  updateNumMap loc Nothing = Just [loc]
+              forM_ newNeighbors $ \loc -> modify $ \(num, rMap, nMap) -> (num, insert loc (Just $ num) rMap, M.alter (updateNumMap loc) num nMap)
+              forM_ newNeighbors $ \loc -> dfs' loc world
+
+removeSmallRegions :: GameState ()
+removeSmallRegions = do
+    game <- get
+    let (_,rMap,nMap) = game^.regionMap
+        smallRegions = M.filter (\xs -> length xs < 25) nMap
+    forM_ (M.keys smallRegions) removeSmallRegion
+
+deleteAll :: [Coord] -> Map Coord (Maybe Int) -> Map Coord (Maybe Int)
+deleteAll ks = mapWithKey (\k x -> if elem k ks then Nothing else x)
+
+removeSmallRegion :: Int -> GameState ()
+removeSmallRegion num = do
+    game <- get
+    let (rNum,rMap,nMap) = game^.regionMap
+        locs = nMap ! num
+        assocList = map (\loc -> (reverseCoord loc, wall)) locs
+    world %= (// assocList)
+    regionMap .= (rNum, deleteAll locs rMap, delete num nMap)
+    return ()
+
+createRegionMap :: GameState ()
+createRegionMap = do
+    game <- get
+    let rMap = foldr (toRegionMap $ game^.world) (0,M.empty,M.empty) (A.assocs $ game^.world)
+    regionMap .= rMap
+
+    where toRegionMap :: GameWorld -> (Coord, Tile) -> RegionMap -> RegionMap
+          toRegionMap world (loc, tile) (num,rMap,nMap) =
+              case tile^.kind of
+                   Floor -> handleFloor world (reverseCoord loc) num rMap nMap
+                   _ -> (num, insert (reverseCoord loc) Nothing rMap, nMap)
+
+          handleFloor world loc num rMap nMap = if member loc rMap
+                                                   then (num, rMap, nMap)
+                                                   else let (_,rMap',nMap') = fillRegion loc num world
+                                                            in (num+1, M.union rMap rMap', M.union nMap nMap')
 
 createGame :: Window -> Map StyleType CursesStyle -> IO Game
 createGame win cstyles = do
@@ -110,6 +199,8 @@ createGame win cstyles = do
                     , _stdGen = g
                     , _window = win
                     , _styles = cstyles
+                    , _regionMap = (0, M.empty, M.empty)
+                    , _drawRegions = False
                     }
     return $ updateNewGame game
 

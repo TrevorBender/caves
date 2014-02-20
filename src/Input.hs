@@ -49,6 +49,7 @@ processInputScreen Play key =
          KeyChar 'n' -> movePlayer SE
          KeyChar '>' -> climb Down
          KeyChar '<' -> climb Up
+         KeyChar 'r' -> drawRegions %= not
          _ -> return ()
 
 climb :: Climb -> GameState ()

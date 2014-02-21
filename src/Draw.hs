@@ -62,7 +62,7 @@ drawScreen Play = do
 
 drawMessages :: GameIOState ()
 drawMessages = get >>= \game -> do
-    forM_ (zip [1..] (game^.messages)) $ \(i, msg) -> drawStr (gameHeight + i) 5 msg
+    forM_ (zip [1..] (reverse $ game^.messages)) $ \(i, msg) -> drawStr (gameHeight + i) 5 msg
     messages .= []
 
 drawHud :: GameIOState ()

@@ -27,6 +27,7 @@ styleMap = M.fromAscList
          , (PlayerStyle, AttributeStyle [Bold] DefaultF DarkBlueB)
          , (FungusStyle, AttributeStyle [Bold] GreenF DefaultB)
          , (OutOfSiteStyle, AttributeStyle [Bold] DarkBlueF DefaultB)
+         , (BatStyle, AttributeStyle [Bold] BrownF DefaultB)
          ]
 
 emptyUis :: Game -> Bool

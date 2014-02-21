@@ -5,7 +5,7 @@ module Game where
 import Control.Lens
 import Control.Monad.State.Strict (State, get)
 import Data.Array as A
-import Data.Map.Strict as M (Map, (!))
+import Data.Map.Strict as M (Map, (!), insert)
 import System.Random (StdGen)
 import System.IO (hPutStrLn, stderr)
 import System.IO.Unsafe (unsafePerformIO)
@@ -23,9 +23,14 @@ data Screen = Start | Win | Lose | Play
 
 type Coord = (Int, Int, Int)
 
-data StyleType = DefaultStyle | PlayerStyle | FungusStyle | OutOfSiteStyle deriving (Eq, Ord)
+data StyleType = DefaultStyle
+               | PlayerStyle
+               | FungusStyle
+               | OutOfSiteStyle
+               | BatStyle
+               deriving (Eq, Ord)
 
-data CreatureKind = Player | Fungus
+data CreatureKind = Player | Fungus | Bat
 data Creature = Creature
     { _location :: Coord
     , _c_glyph :: Char
@@ -67,7 +72,6 @@ data Game = Game
     { _uis   :: [Screen]
     , _world :: GameWorld
     , _visibleWorld :: GameWorld
-    , _player :: Creature
     , _creatures :: M.Map Int Creature
     , _messages :: [String]
 
@@ -82,6 +86,13 @@ data Game = Game
     , _styles :: Map StyleType CursesStyle
     }
 makeLenses ''Game
+
+-- identical function signature:
+-- player :: Functor f => (Creature -> f Creature) -> Game -> f Game
+player :: Lens' Game Creature
+player f game = 
+    let updatePlayer game p' = (creatures %~ (M.insert 0 p')) game
+    in fmap (updatePlayer game) (f (_creatures game M.! 0))
 
 type GameState = State Game
 

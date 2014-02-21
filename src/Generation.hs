@@ -54,14 +54,37 @@ createFungus depth = do
         , _maxHp = 1
         , _visionRadius = 0
         }
-
 fungiPerLevel = 5
+
+createBat :: Int -> GameState Creature
+createBat depth = do
+    loc <- findEmptyLocation depth
+    thisId <- nextInt
+    return $ Creature
+        { _location = loc
+        , _c_kind = Bat
+        , _c_glyph = 'b'
+        , _c_style = BatStyle
+        , _c_id = thisId
+        , _name = "bat"
+        , _attack_power = 4
+        , _defense = 4
+        , _hp = 5
+        , _maxHp = 5
+        , _visionRadius = 0
+        }
+batsPerLevel = 5
+
+populateCreature :: (Int -> GameState Creature) -> (Int -> Int) -> GameState ()
+populateCreature createCreature cPerLevel = do
+    cs <- forM [0..(gameDepth-1)] $ \depth -> replicateM (cPerLevel depth) $ createCreature depth
+    let cMap = M.fromList $ map (\c -> (c^.c_id, c)) (concat cs)
+    creatures %= (M.union cMap)
 
 populateGame :: GameState ()
 populateGame = do
-    fungi <- forM [0..(gameDepth-1)] $ \depth -> replicateM fungiPerLevel $ createFungus depth
-    let fungiMap = M.fromList $ map (\fungus -> (fungus^.c_id, fungus)) (concat fungi)
-    creatures %= (M.union fungiMap)
+    populateCreature createFungus (\_ -> fungiPerLevel)
+    populateCreature createBat (\_ -> batsPerLevel)
 
 createVictoryStairs :: GameState ()
 createVictoryStairs = do
@@ -192,8 +215,7 @@ createGame win cstyles = do
         game = Game { _uis = [ Start ]
                     , _world = emptyWorld
                     , _visibleWorld = unknownWorld
-                    , _player = thePlayer
-                    , _creatures = M.fromList []
+                    , _creatures = M.fromList [(0,thePlayer)]
                     , _messages = []
                     , _curId = 0
                     , _stdGen = g

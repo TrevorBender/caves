@@ -125,6 +125,7 @@ createStairDown loc = do
     world %= (//[(reverseCoord loc, stairsDown), (reverseCoord lowerLoc, stairsUp)])
     return ()
 
+cleanUp = regionMap .= emptyRegionMap
 
 updateNewGame :: Game -> Game
 updateNewGame = execState $ do
@@ -136,6 +137,7 @@ updateNewGame = execState $ do
     createVictoryStairs
     findEmptyLocation 0 >>= (player.location .=)
     populateGame
+    cleanUp
 
 fillRegion :: Coord                   -- ^ Starting location
            -> Int                     -- ^ Region number
@@ -190,6 +192,9 @@ createRegionMap = do
                                                    else let (_,rMap',nMap') = fillRegion loc num world
                                                             in (num+1, M.union rMap rMap', M.union nMap nMap')
 
+-- should this be a Maybe
+emptyRegionMap = (0, M.empty, M.empty)
+
 createGame :: Window -> Map StyleType CursesStyle -> IO Game
 createGame win cstyles = do
     g <- getStdGen
@@ -205,8 +210,7 @@ createGame win cstyles = do
                     , _stdGen = g
                     , _window = win
                     , _styles = cstyles
-                    , _regionMap = (0, M.empty, M.empty)
-                    , _drawRegions = False
+                    , _regionMap = emptyRegionMap
                     }
     return $ updateNewGame game
 

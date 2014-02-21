@@ -20,38 +20,39 @@ getInput :: IO Key
 getInput = getCh
 
 processInputScreen :: Screen -> Key -> GameState ()
-processInputScreen Start key =
+processInputScreen Start (KeyChar key) =
     case key of
-         KeyChar '\n' -> uis .= [Play]
-         KeyChar 'q' -> quit
+         '\n' -> uis .= [Play]
+         'q' -> quit
          _ -> return ()
 
-processInputScreen Win key =
+processInputScreen Win (KeyChar key) =
     case key of
-         KeyChar '\ESC' -> quit
+         '\ESC' -> quit
          _ -> uis .= [Start]
 
-processInputScreen Lose key =
+processInputScreen Lose (KeyChar key) =
     case key of
-         KeyChar '\ESC' -> quit
+         '\ESC' -> quit
          _ -> uis .= [Start]
 
-processInputScreen Play key =
+processInputScreen Play (KeyChar key) =
     case key of
-         KeyChar '\DEL' -> lose
-         KeyChar 'q' -> quit
-         KeyChar 'h' -> movePlayer W
-         KeyChar 'l' -> movePlayer E
-         KeyChar 'k' -> movePlayer N
-         KeyChar 'j' -> movePlayer S
-         KeyChar 'y' -> movePlayer NW
-         KeyChar 'u' -> movePlayer NE
-         KeyChar 'b' -> movePlayer SW
-         KeyChar 'n' -> movePlayer SE
-         KeyChar '>' -> climb Down
-         KeyChar '<' -> climb Up
-         KeyChar 'r' -> drawRegions %= not
+         '\DEL' -> lose
+         'q' -> quit
+         'h' -> movePlayer W
+         'l' -> movePlayer E
+         'k' -> movePlayer N
+         'j' -> movePlayer S
+         'y' -> movePlayer NW
+         'u' -> movePlayer NE
+         'b' -> movePlayer SW
+         'n' -> movePlayer SE
+         '>' -> climb Down
+         '<' -> climb Up
          _ -> return ()
+
+processInputScreen _ _ = return ()
 
 climb :: Climb -> GameState ()
 climb dir = do

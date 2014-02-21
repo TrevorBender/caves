@@ -81,7 +81,6 @@ data Game = Game
 
     -- region map generation
     , _regionMap :: RegionMap
-    , _drawRegions :: Bool
 
     , _window :: Window
     , _styles :: Map StyleType CursesStyle

@@ -54,7 +54,6 @@ drawScreen Lose = do
 drawScreen Play = do
     game <- get
     drawLevel
-    when (game^.drawRegions) drawRegionNumbers
     drawPlayer
     drawCreatures
     drawHud

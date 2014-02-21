@@ -3,6 +3,7 @@
 module Game where
 
 import Control.Lens
+import Control.Monad (when)
 import Control.Monad.State.Strict (State, get)
 import Data.Array as A
 import Data.Map.Strict as M (Map, (!), insert)
@@ -160,8 +161,21 @@ neighbors8 origin world = tiles
           tileAt = (world A.!) . reverseCoord
           tiles = map tileAt ixs
 
-notify :: String -> GameState ()
-notify s = messages %= (s:)
+-- | Distance squared
+distanceSq :: Coord -> Coord -> Int
+distanceSq (x,y,_) (x',y',_) = sq (x - x') + sq (y - y')
+    where sq x = x * x
+
+sameDepth :: Coord -> Coord -> Bool
+sameDepth (_,_,z) (_,_,z') = z == z'
+
+notify :: Coord -> String -> GameState ()
+notify loc s = do
+    game <- get
+    let ploc = game^.player.location
+        vision = game^.player.visionRadius
+        inRange = sameDepth loc ploc && distanceSq loc ploc <= vision * vision
+    when inRange $ messages %= (s:)
 
 lose :: GameState ()
 lose = uis .= [Lose]

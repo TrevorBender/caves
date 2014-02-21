@@ -94,22 +94,6 @@ createVictoryStairs = do
        then world %= (//[(reverseCoord loc, stairsUp)])
        else createVictoryStairs
 
--- create stairs:
---
--- connected = []
--- for each num in nMap:
---   for each loc (z < depth-1):
---     reg = get region for loc (from rMap)
---     if reg not elem connected then
---       connect down
---       add reg to list of overlapping regions
---
--- connect_down z r1 r2:
---
--- overlap = union nMap[r1] (map \loc -> loc[z-1] nMap[r2])
--- loc = random from overlap
--- world // [(loc,stairDn), (loc[z+1],stairsUp)]
-
 createStairs :: GameState ()
 createStairs = do
     game <- get

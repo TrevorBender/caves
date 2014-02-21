@@ -47,7 +47,9 @@ creatureTick' Bat bat = do
 creatureTick' _ _ = return ()
 
 action :: Creature -> String -> GameState String
-action c action = get >>= \game -> return $ if c == game^.player then "You " ++ action else c^.name ++ action ++ "s"
+action c action = get >>= \game -> return $ if c == game^.player
+                                               then "You " ++ action
+                                               else c^.name ++ " " ++  action ++ "s"
 
 target :: Creature -> GameState String
 target c = get >>= \game -> return $ if c == game^.player then "you" else "the " ++ c^.name
@@ -59,7 +61,7 @@ attack creature other = get >>= \game -> do
     let other' = (hp -~ attackValue) other
     attackStr <- action creature "attack"
     targetStr <- target other
-    notify $ attackStr ++ " " ++ targetStr ++ " for " ++ show attackValue ++ " damage."
+    notify (creature^.location) $ attackStr ++ " " ++ targetStr ++ " for " ++ show attackValue ++ " damage."
     if other'^.hp < 1 then die other'
                       else updateCreature other'
 
@@ -72,7 +74,7 @@ die c = do
         let cs = delete (c^.c_id) (game^.creatures)
         creatures .= cs
         let msg name = "The " ++ name ++ " dies."
-        notify $ msg (c^.name)
+        notify (c^.location) $ msg (c^.name)
 
 updateCreature :: Creature -> GameState ()
 updateCreature c = do
@@ -106,7 +108,7 @@ dig :: Coord -> GameState ()
 dig loc = do
     game <- get
     world %= (//[(reverseCoord loc, floor)])
-    notify $ "You dig."
+    notify (game^.player.location) $ "You dig."
 
 canMove :: Coord -> GameState Bool
 canMove loc = do

@@ -8,7 +8,7 @@ import Control.Lens
 import Control.Monad.State.Strict (State, get, put, execState)
 import Data.Array as A
 import Data.Maybe (isNothing, isJust)
-import Data.Map.Strict as M (elems, lookup)
+import Data.Map.Strict as M (elems, lookup, delete, (!), member)
 import System.Random (getStdGen, randomR, randomRs, StdGen)
 
 import Game
@@ -41,7 +41,7 @@ updateVisibleTiles = do
     visibleWorld %= (// updates)
 
 visibleTileAt :: Game -> Coord -> Tile
-visibleTileAt game loc = if inBounds loc then (game^.visibleWorld) ! (reverseCoord loc) else outOfBounds
+visibleTileAt game loc = if inBounds loc then (game^.visibleWorld) A.! (reverseCoord loc) else outOfBounds
 
 seeThrough :: Game -> Coord -> Bool
 seeThrough game = (`elem` [Floor, StairsUp, StairsDown]) . (^.kind) . tileAt game
@@ -50,7 +50,7 @@ tileAt :: Game -> Coord -> Tile
 tileAt game = tileAtWorld (game^.world)
 
 tileAtWorld :: GameWorld -> Coord -> Tile
-tileAtWorld world loc = if inBounds loc then world ! (reverseCoord loc) else outOfBounds
+tileAtWorld world loc = if inBounds loc then world A.! (reverseCoord loc) else outOfBounds
 
 creatureAt :: Coord -> GameState (Maybe Creature)
 creatureAt loc = do
@@ -116,15 +116,15 @@ isCreature loc = do
     creature <- creatureAt loc
     return $ isJust creature
 
-itemAt :: Coord -> GameState (Maybe Item)
+itemAt :: Coord -> GameState Item
 itemAt loc = do
     game <- get
-    return $ M.lookup loc (game^.items)
+    return $ (game^.items) M.! loc
 
 isItem :: Coord -> GameState Bool
 isItem loc = do
-    mi <- itemAt loc
-    return $ isJust mi
+    game <- get
+    return $ member loc (game^.items)
 
 isEmpty :: Coord -> GameState Bool
 isEmpty loc = do
@@ -132,3 +132,6 @@ isEmpty loc = do
     hasCreature <- isCreature loc
     hasItem <- isItem loc
     return $ tileOK && (not hasCreature) && not hasItem
+
+removeItemFromWorld :: Coord -> GameState ()
+removeItemFromWorld loc = items %= (delete loc)

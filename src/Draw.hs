@@ -88,9 +88,12 @@ drawMessages = get >>= \game -> do
 drawHud :: GameIOState ()
 drawHud = get >>= \game -> do
     let p = game^.player
+        loc = show $ p^.location
+        health = show (p^.hp) ++ "/" ++ show (p^.maxHp)
+        inv = show (length (p^.inventory)) ++ "/" ++ show (p^.maxInv)
     resetColor
     drawStr gameHeight 0 $
-        "loc=" ++ show (p^.location) ++ " hp=[" ++ show (p^.hp) ++ "/" ++ show (p^.maxHp) ++ "]"
+        "loc=" ++ loc ++ " hp=[" ++ health ++ "] inv=[" ++ inv ++ "]"
 
 getOffsets :: GameIOState (Int, Int)
 getOffsets = do

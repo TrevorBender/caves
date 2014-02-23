@@ -1,6 +1,7 @@
 module Creature
     ( creatureTick
     , move
+    , playerPickup
     ) where
 
 import Prelude hiding (floor)
@@ -14,7 +15,12 @@ import Data.Array as A
 import Game
 import Random
 import Generation (createFungus)
-import World (isFloor, isCreature, isItem, seeThrough, creatureAt, floor, tileAt)
+import World ( isFloor, isCreature
+             , isItem, seeThrough
+             , creatureAt, floor
+             , tileAt, itemAt
+             , removeItemFromWorld
+             )
 import Line (line)
 
 creatureTick :: Creature -> GameState ()
@@ -117,3 +123,21 @@ canMove loc = do
     let tile = tileAt game loc
     return $ tile^.kind `elem` [ Floor, StairsUp, StairsDown ]
 
+inventoryFull :: Creature -> Bool
+inventoryFull c = length (c^.inventory) == c^.maxInv
+
+pickup :: Creature -> GameState ()
+pickup c = do
+    game <- get
+    let loc = c^.location
+        fullInv = inventoryFull c
+    hasItem <- isItem loc
+    when (not fullInv && hasItem) $ do
+        item <- itemAt loc
+        removeItemFromWorld loc
+        player.inventory %= (item:)
+
+playerPickup :: GameState ()
+playerPickup = do
+    game <- get
+    pickup (game^.player)

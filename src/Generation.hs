@@ -22,6 +22,8 @@ import Game
 import World
 import Random
 
+emptyInventory = []
+
 createPlayer :: Creature
 createPlayer = Creature
     { _location = (0,0,0) -- temporary location
@@ -35,6 +37,8 @@ createPlayer = Creature
     , _hp = 40
     , _maxHp = 40
     , _visionRadius = 20
+    , _inventory = emptyInventory
+    , _maxInv = 20
     }
 
 createFungus :: Int -> GameState Creature
@@ -53,6 +57,8 @@ createFungus depth = do
         , _hp = 1
         , _maxHp = 1
         , _visionRadius = 0
+        , _inventory = emptyInventory
+        , _maxInv = 0
         }
 fungiPerLevel = 5
 
@@ -72,6 +78,8 @@ createBat depth = do
         , _hp = 5
         , _maxHp = 5
         , _visionRadius = 0
+        , _inventory = emptyInventory
+        , _maxInv = 0
         }
 batsPerLevel = 5
 

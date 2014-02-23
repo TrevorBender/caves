@@ -13,7 +13,7 @@ import Data.Map.Strict as M (adjust)
 import UI.HSCurses.Curses as C (Key(..), getCh)
 
 import Game
-import Creature (move)
+import Creature (move, playerPickup)
 import World (creatureAt, isFloor, floor, tileAt, stairsDown, stairsUp)
 
 getInput :: IO Key
@@ -50,6 +50,7 @@ processInputScreen Play (KeyChar key) =
          'n' -> movePlayer SE
          '>' -> climb Down
          '<' -> climb Up
+         ',' -> playerPickup
          _ -> return ()
 
 processInputScreen _ _ = return ()

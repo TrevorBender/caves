@@ -31,6 +31,14 @@ data StyleType = DefaultStyle
                | BatStyle
                deriving (Eq, Ord)
 
+data Item = Item
+    { _i_glyph :: Char
+    , _i_style :: StyleType
+    , _i_name :: String
+    , _i_location :: Coord
+    }
+makeLenses ''Item
+
 data CreatureKind = Player | Fungus | Bat
 data Creature = Creature
     { _location :: Coord
@@ -44,20 +52,13 @@ data Creature = Creature
     , _hp :: Int
     , _maxHp :: Int
     , _visionRadius :: Int
+    , _inventory :: [Item]
+    , _maxInv :: Int
     }
 makeLenses ''Creature
 
 instance Eq Creature where
     (==) a b = a^.c_id == b^.c_id
-
-
-data Item = Item
-    { _i_glyph :: Char
-    , _i_style :: StyleType
-    , _i_name :: String
-    , _i_location :: Coord
-    }
-makeLenses ''Item
 
 
 data TileKind = Floor | Wall | StairsUp | StairsDown | Unknown deriving (Eq)

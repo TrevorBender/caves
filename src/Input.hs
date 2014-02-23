@@ -13,7 +13,7 @@ import Data.Map.Strict as M (adjust)
 import UI.HSCurses.Curses as C (Key(..), getCh)
 
 import Game
-import Creature (move, playerPickup)
+import Creature (move, playerPickup, playerDropItem)
 import World (creatureAt, isFloor, floor, tileAt, stairsDown, stairsUp)
 
 getInput :: IO Key
@@ -51,6 +51,21 @@ processInputScreen Play (KeyChar key) =
          '>' -> climb Down
          '<' -> climb Up
          ',' -> playerPickup
+         'd' -> uis %= (\us -> us ++ [DropItem])
+         _ -> updated .= False
+
+processInputScreen DropItem (KeyChar key) = do
+    updated .= False
+    game <- get
+    let ks = take (length $ game^.player.inventory) $ zip [0..] ['a'..]
+        ks' = filter (\(_,k) -> k == key) ks
+    when (not $ null ks') $ do
+        let ix = (fst . head) ks'
+        playerDropItem ix
+        updated .= True
+        uis %= init
+    case key of
+         '\ESC' -> uis %= init
          _ -> return ()
 
 processInputScreen _ _ = return ()
@@ -77,4 +92,5 @@ movePlayer dir = do
 processInput :: Key -> GameState ()
 processInput key = do
     game <- get
+    updated .= True
     processInputScreen (ui game) key

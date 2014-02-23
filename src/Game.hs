@@ -20,7 +20,7 @@ gameDepth = 5
 
 debugOn = False
 
-data Screen = Start | Win | Lose | Play
+data Screen = Start | Win | Lose | Play | DropItem
 
 type Coord = (Int, Int, Int)
 
@@ -60,7 +60,6 @@ makeLenses ''Creature
 instance Eq Creature where
     (==) a b = a^.c_id == b^.c_id
 
-
 data TileKind = Floor | Wall | StairsUp | StairsDown | Unknown deriving (Eq)
 
 data Tile = Tile
@@ -87,13 +86,11 @@ data Game = Game
     , _creatures :: M.Map Int Creature
     , _items :: M.Map Coord Item
     , _messages :: [String]
-
     , _curId :: Int     -- for id generation
     , _stdGen :: StdGen -- for random number generation
-
+    , _updated :: Bool
     -- region map generation
     , _regionMap :: RegionMap
-
     , _window :: Window
     , _styles :: Map StyleType CursesStyle
     }
@@ -123,7 +120,7 @@ getStyle' :: StyleType -> GameState CursesStyle
 getStyle' styleType = get >>= \game -> return $ getStyle styleType game
 
 ui :: Game -> Screen
-ui game = head $ game^.uis
+ui game = last $ game^.uis
 
 splitBy :: Int -> [a] -> [[a]]
 splitBy width [] = []
@@ -205,3 +202,6 @@ debug str x = if debugOn then debug' str x else x
     where debug' str x = unsafePerformIO $ do
               hPutStrLn stderr str
               return x
+
+gameChanged :: GameState Bool
+gameChanged = get >>= \game -> return $ game^.updated

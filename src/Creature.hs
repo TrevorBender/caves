@@ -2,6 +2,7 @@ module Creature
     ( creatureTick
     , move
     , playerPickup
+    , playerDropItem
     ) where
 
 import Prelude hiding (floor)
@@ -141,3 +142,18 @@ playerPickup :: GameState ()
 playerPickup = do
     game <- get
     pickup (game^.player)
+
+dropItem :: Creature -> Int -> GameState ()
+dropItem c i = do
+    return ()
+
+playerDropItem :: Int -> GameState ()
+playerDropItem ix = do
+    game <- get
+    let item = (game^.player.inventory) !! ix
+    player.inventory %= (remove ix)
+    let loc = game^.player.location
+    items %= insert loc (item {_i_location = loc})
+
+    where remove ix xs = let (bs, cs) = splitAt ix xs
+                         in bs ++ tail cs

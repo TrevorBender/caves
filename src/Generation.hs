@@ -233,6 +233,7 @@ createGame win cstyles = do
                     , _messages = []
                     , _curId = 0
                     , _stdGen = g
+                    , _updated = False
                     , _window = win
                     , _styles = cstyles
                     , _regionMap = emptyRegionMap

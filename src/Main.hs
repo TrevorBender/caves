@@ -5,7 +5,7 @@ module Main where
 import Prelude hiding (floor)
 
 import Control.Lens
-import Control.Monad (forM_)
+import Control.Monad (forM_, when)
 import Control.Monad.State.Strict (execState, get, execStateT)
 import Data.Map.Strict as M (Map, elems, fromAscList, keys)
 import System.IO (hGetEcho, hSetEcho, stdin)
@@ -44,7 +44,7 @@ gameLoop game = do
     erase
     game' <- execStateT drawGame game
     ch <- getInput
-    let game'' = (execState $ processInput ch >> tick) game'
+    let game'' = (execState $ processInput ch >> gameChanged >>= \gc -> when gc tick) game'
     if emptyUis game''
        then return ()
        else gameLoop game''

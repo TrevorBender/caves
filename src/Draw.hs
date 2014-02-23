@@ -24,7 +24,7 @@ drawGame :: GameIOState ()
 drawGame = do
     game <- get
     resetColor
-    drawScreen (ui game)
+    forM_ (game^.uis) drawScreen
     liftIO refresh
 
 drawBlock :: Int -> Int -> [String] -> GameIOState ()
@@ -59,6 +59,14 @@ drawScreen Play = do
     drawCreatures
     drawHud
     drawMessages
+
+drawScreen DropItem = do
+    drawStr 5 5 "Drop item screen"
+    game <- get
+    drawBlock 7 5 $ itemStrings $ game^.player.inventory
+
+    where itemStrings :: [Item] -> [String]
+          itemStrings is = map (\(c, i) -> c : (" - " ++ (i^.i_name))) $ zip ['a'..] is
 
 drawItem :: Item -> GameIOState ()
 drawItem item = do

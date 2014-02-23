@@ -10,7 +10,7 @@ import Control.Monad (forM_, when)
 import Control.Monad.State.Strict as S
 import Data.Array as A
 import Data.Char (chr, ord, intToDigit)
-import Data.Map.Strict as M (elems, filter, assocs)
+import Data.Map.Strict as M (elems, filter, assocs, filterWithKey)
 import Data.Maybe (isJust)
 import UI.HSCurses.Curses
 import UI.HSCurses.CursesHelper
@@ -54,10 +54,31 @@ drawScreen Lose = do
 drawScreen Play = do
     game <- get
     drawLevel
+    drawItems
     drawPlayer
     drawCreatures
     drawHud
     drawMessages
+
+drawItem :: Item -> GameIOState ()
+drawItem item = do
+    game <- get
+    let (x,y,_) = item^.i_location
+        glyph = item^.i_glyph
+        cstyle = getStyle (item^.i_style) game
+    visible <- inScreenBounds x y
+    when visible $ do
+        (sx,sy) <- getScreenCoords x y
+        liftIO $ setStyle cstyle
+        drawStr sy sx [glyph]
+
+drawItems :: GameIOState ()
+drawItems = get >>= \game -> do
+    let gz = game^.player.location
+        p = game^.player
+        visibleItem loc item = canSee game loc p
+        visItems = M.filterWithKey visibleItem (game^.items)
+    forM_ (M.elems visItems) drawItem
 
 drawMessages :: GameIOState ()
 drawMessages = get >>= \game -> do

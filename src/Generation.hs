@@ -125,6 +125,21 @@ createStairDown loc = do
     world %= (//[(reverseCoord loc, stairsDown), (reverseCoord lowerLoc, stairsUp)])
     return ()
 
+createRock :: Int -> GameState Item
+createRock depth = do
+    loc <- findEmptyLocation depth
+    return $ Item { _i_location = loc
+                  , _i_name = "rock"
+                  , _i_style = DefaultStyle
+                  , _i_glyph = ','
+                  }
+
+createItems :: GameState ()
+createItems = do
+    rocks <- forM [0..(gameDepth-1)] $ \depth -> replicateM (div (gameWidth * gameHeight) 50) $ createRock depth
+    let itemMap = M.fromList $ map (\i -> (i^.i_location, i)) (concat rocks)
+    items %= (M.union itemMap)
+
 cleanUp = regionMap .= emptyRegionMap
 
 updateNewGame :: Game -> Game
@@ -137,6 +152,7 @@ updateNewGame = execState $ do
     createVictoryStairs
     findEmptyLocation 0 >>= (player.location .=)
     populateGame
+    createItems
     cleanUp
 
 fillRegion :: Coord                   -- ^ Starting location
@@ -205,6 +221,7 @@ createGame win cstyles = do
                     , _world = emptyWorld
                     , _visibleWorld = unknownWorld
                     , _creatures = M.fromList [(0,thePlayer)]
+                    , _items = M.empty
                     , _messages = []
                     , _curId = 0
                     , _stdGen = g

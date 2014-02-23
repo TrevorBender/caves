@@ -50,6 +50,16 @@ makeLenses ''Creature
 instance Eq Creature where
     (==) a b = a^.c_id == b^.c_id
 
+
+data Item = Item
+    { _i_glyph :: Char
+    , _i_style :: StyleType
+    , _i_name :: String
+    , _i_location :: Coord
+    }
+makeLenses ''Item
+
+
 data TileKind = Floor | Wall | StairsUp | StairsDown | Unknown deriving (Eq)
 
 data Tile = Tile
@@ -74,6 +84,7 @@ data Game = Game
     , _world :: GameWorld
     , _visibleWorld :: GameWorld
     , _creatures :: M.Map Int Creature
+    , _items :: M.Map Coord Item
     , _messages :: [String]
 
     , _curId :: Int     -- for id generation
@@ -106,6 +117,9 @@ nextInt = do
 
 getStyle :: StyleType -> Game -> CursesStyle
 getStyle styleType game = (game^.styles) M.! styleType
+
+getStyle' :: StyleType -> GameState CursesStyle
+getStyle' styleType = get >>= \game -> return $ getStyle styleType game
 
 ui :: Game -> Screen
 ui game = head $ game^.uis

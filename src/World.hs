@@ -8,7 +8,7 @@ import Control.Lens
 import Control.Monad.State.Strict (State, get, put, execState)
 import Data.Array as A
 import Data.Maybe (isNothing, isJust)
-import Data.Map.Strict as M (elems)
+import Data.Map.Strict as M (elems, lookup)
 import System.Random (getStdGen, randomR, randomRs, StdGen)
 
 import Game
@@ -116,8 +116,19 @@ isCreature loc = do
     creature <- creatureAt loc
     return $ isJust creature
 
+itemAt :: Coord -> GameState (Maybe Item)
+itemAt loc = do
+    game <- get
+    return $ M.lookup loc (game^.items)
+
+isItem :: Coord -> GameState Bool
+isItem loc = do
+    mi <- itemAt loc
+    return $ isJust mi
+
 isEmpty :: Coord -> GameState Bool
 isEmpty loc = do
     tileOK <- isFloor loc
     hasCreature <- isCreature loc
-    return $ tileOK && (not hasCreature)
+    hasItem <- isItem loc
+    return $ tileOK && (not hasCreature) && not hasItem

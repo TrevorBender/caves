@@ -14,7 +14,7 @@ import Data.Array as A
 import Game
 import Random
 import Generation (createFungus)
-import World (isFloor, isCreature, seeThrough, creatureAt, floor, tileAt)
+import World (isFloor, isCreature, isItem, seeThrough, creatureAt, floor, tileAt)
 import Line (line)
 
 creatureTick :: Creature -> GameState ()
@@ -33,7 +33,8 @@ creatureTick' Fungus c = do
         when (inBounds loc') $ do
             isFloor <- isFloor loc'
             isCreature <- isCreature loc'
-            when (isFloor && not isCreature) $ do
+            isItem <- isItem loc'
+            when (isFloor && not isCreature && not isItem) $ do
                 fungus <- createFungus depth
                 let fungus' = (location .~ loc') fungus
                 creatures %= (insert (fungus^.c_id) fungus')

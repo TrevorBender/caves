@@ -21,15 +21,6 @@ import World (updateVisibleTiles)
 
 import Line
 
-styleMap :: Map StyleType Style
-styleMap = M.fromAscList
-         [ (DefaultStyle, CH.defaultStyle)
-         , (PlayerStyle, AttributeStyle [Bold] DefaultF DarkBlueB)
-         , (FungusStyle, AttributeStyle [Bold] GreenF DefaultB)
-         , (OutOfSiteStyle, AttributeStyle [Bold] DarkBlueF DefaultB)
-         , (BatStyle, AttributeStyle [Bold] BrownF DefaultB)
-         ]
-
 emptyUis :: Game -> Bool
 emptyUis game = null $ game^.uis
 

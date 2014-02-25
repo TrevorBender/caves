@@ -39,6 +39,8 @@ createPlayer = Creature
     , _visionRadius = 20
     , _inventory = emptyInventory
     , _maxInv = 20
+    , _weapon = Nothing
+    , _armor = Nothing
     }
 
 createFungus :: Int -> GameState Creature
@@ -59,6 +61,8 @@ createFungus depth = do
         , _visionRadius = 0
         , _inventory = emptyInventory
         , _maxInv = 0
+        , _weapon = Nothing
+        , _armor = Nothing
         }
 fungiPerLevel = 5
 
@@ -80,19 +84,22 @@ createBat depth = do
         , _visionRadius = 0
         , _inventory = emptyInventory
         , _maxInv = 0
+        , _weapon = Nothing
+        , _armor = Nothing
         }
 batsPerLevel = 5
 
-populateCreature :: (Int -> GameState Creature) -> (Int -> Int) -> GameState ()
-populateCreature createCreature cPerLevel = do
-    cs <- forM [0..(gameDepth-1)] $ \depth -> replicateM (cPerLevel depth) $ createCreature depth
-    let cMap = M.fromList $ map (\c -> (c^.c_id, c)) (concat cs)
-    creatures %= (M.union cMap)
 
 populateGame :: GameState ()
 populateGame = do
     populateCreature createFungus (\_ -> fungiPerLevel)
     populateCreature createBat (\_ -> batsPerLevel)
+
+    where populateCreature :: (Int -> GameState Creature) -> (Int -> Int) -> GameState ()
+          populateCreature createCreature cPerLevel = do
+              cs <- forM [0..(gameDepth-1)] $ \depth -> replicateM (cPerLevel depth) $ createCreature depth
+              let cMap = M.fromList $ map (\c -> (c^.c_id, c)) (concat cs)
+              creatures %= (M.union cMap)
 
 createVictoryStairs :: GameState ()
 createVictoryStairs = do
@@ -136,17 +143,131 @@ createStairDown loc = do
 createRock :: Int -> GameState Item
 createRock depth = do
     loc <- findEmptyLocation depth
+    id <- nextInt
     return $ Item { _i_location = loc
+                  , _i_id = id
                   , _i_name = "rock"
                   , _i_style = DefaultStyle
                   , _i_glyph = ','
+                  , _i_attackPower = 0
+                  , _i_defensePower = 0
                   }
+
+createVictoryItem :: GameState Item
+createVictoryItem = do
+    loc <- findEmptyLocation (gameDepth - 1)
+    id <- nextInt
+    return $ Item { _i_location = loc
+                  , _i_id = id
+                  , _i_name = "idol"
+                  , _i_style = VictoryItemStyle
+                  , _i_glyph = '*'
+                  , _i_attackPower = 0
+                  , _i_defensePower = 0
+                  }
+
+createDagger :: Int -> GameState Item
+createDagger depth= do
+    loc <- findEmptyLocation depth
+    id <- nextInt
+    return $ Item { _i_location = loc
+                  , _i_id = id
+                  , _i_name = "dagger"
+                  , _i_style = DefaultStyle
+                  , _i_glyph = ')'
+                  , _i_attackPower = 5
+                  , _i_defensePower = 0
+                  }
+
+createSword :: Int -> GameState Item
+createSword depth= do
+    loc <- findEmptyLocation depth
+    id <- nextInt
+    return $ Item { _i_location = loc
+                  , _i_id = id
+                  , _i_name = "sword"
+                  , _i_style = SwordStyle
+                  , _i_glyph = ')'
+                  , _i_attackPower = 10
+                  , _i_defensePower = 0
+                  }
+
+createStaff :: Int -> GameState Item
+createStaff depth= do
+    loc <- findEmptyLocation depth
+    id <- nextInt
+    return $ Item { _i_location = loc
+                  , _i_id = id
+                  , _i_name = "staff"
+                  , _i_style = StaffStyle
+                  , _i_glyph = ')'
+                  , _i_attackPower = 5
+                  , _i_defensePower = 5
+                  }
+
+createTunic :: Int -> GameState Item
+createTunic depth= do
+    loc <- findEmptyLocation depth
+    id <- nextInt
+    return $ Item { _i_location = loc
+                  , _i_id = id
+                  , _i_name = "tunic"
+                  , _i_style = DefaultStyle
+                  , _i_glyph = '['
+                  , _i_attackPower = 0
+                  , _i_defensePower = 2
+                  }
+
+createChainmail :: Int -> GameState Item
+createChainmail depth= do
+    loc <- findEmptyLocation depth
+    id <- nextInt
+    return $ Item { _i_location = loc
+                  , _i_id = id
+                  , _i_name = "chainmail"
+                  , _i_style = DefaultStyle
+                  , _i_glyph = '['
+                  , _i_attackPower = 0
+                  , _i_defensePower = 4
+                  }
+
+createPlatemail :: Int -> GameState Item
+createPlatemail depth= do
+    loc <- findEmptyLocation depth
+    id <- nextInt
+    return $ Item { _i_location = loc
+                  , _i_id = id
+                  , _i_name = "platemail"
+                  , _i_style = DefaultStyle
+                  , _i_glyph = '['
+                  , _i_attackPower = 0
+                  , _i_defensePower = 4
+                  }
+
+randomWeapon :: Int -> GameState Item
+randomWeapon depth = do
+    cf <- randomL [ createDagger, createSword, createStaff ]
+    cf depth
+
+randomArmor :: Int -> GameState Item
+randomArmor depth = do
+    cf <- randomL [ createTunic, createChainmail, createPlatemail ]
+    cf depth
 
 createItems :: GameState ()
 createItems = do
-    rocks <- forM [0..(gameDepth-1)] $ \depth -> replicateM (div (gameWidth * gameHeight) 50) $ createRock depth
-    let itemMap = M.fromList $ map (\i -> (i^.i_location, i)) (concat rocks)
-    items %= (M.union itemMap)
+    createItem createRock (\_ -> div (gameWidth * gameHeight) 50)
+    createItem randomWeapon (\_ -> 2)
+    createItem randomArmor (\_ -> 2)
+
+    victoryItem <- createVictoryItem
+    items %= M.insert (victoryItem^.i_location) victoryItem
+
+    where createItem :: (Int -> GameState Item) -> (Int -> Int) -> GameState ()
+          createItem cf nf = do
+              iss <- forM [0..(gameDepth-1)] $ \depth -> replicateM (nf depth) (cf depth)
+              let im = M.fromList $ map (\i -> (i^.i_location, i)) (concat iss)
+              items %= M.union im
 
 cleanUp = regionMap .= emptyRegionMap
 
@@ -225,7 +346,7 @@ createGame win cstyles = do
     let thePlayer = createPlayer
         emptyWorld = A.listArray ((0,0,0), (0,0,0)) [floor]
         unknownWorld = A.listArray gameBounds (repeat unknownTile)
-        game = Game { _uis = [ Start ]
+        game = Game { _uis = [ Play, Start ]
                     , _world = emptyWorld
                     , _visibleWorld = unknownWorld
                     , _creatures = M.fromList [(0,thePlayer)]

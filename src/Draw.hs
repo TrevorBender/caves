@@ -17,6 +17,7 @@ import UI.HSCurses.CursesHelper
 
 import Game
 import World (tileAt, unknownTile, canSee)
+import Creature (creatureAttack, creatureDefense)
 
 type GameIOState = StateT Game IO
 
@@ -37,19 +38,18 @@ drawStr y x str = get >>= \game -> liftIO $ mvWAddStr (game^.window) y x str
 
 drawScreen :: Screen -> GameIOState ()
 drawScreen Start = do
-    drawStr 4 4 "Welcome to the Caves of Slight Danger"
-    drawBlock 15 4 [ "Press [enter] to Start Playing"
-                   , "Press [q] to Quit" ]
+    drawBlock 4 4 [ "You stumble and fall into the Caverns of Extreme Danger"
+                  , "The only way out is to collect the idol from the bottom level"
+                  , "before climbing the stairs back to the surface"
+                  ]
+    drawBlock 15 4 [ "Press [any key] to Start Playing"
+                   ]
 
 drawScreen Win = do
     drawStr 4 4 "You WIN!"
-    drawBlock 15 4 [ "Press [esc] to Quit"
-                   , "Press <Anything> to Go back to Start" ]
 
 drawScreen Lose = do
     drawStr 4 4 "You LOSE!"
-    drawBlock 15 4 [ "Press [esc] to Quit"
-                   , "Press <Anything> to Go back to Start" ]
 
 drawScreen Play = do
     game <- get
@@ -63,10 +63,16 @@ drawScreen Play = do
 drawScreen DropItem = do
     drawStr 5 5 "Drop item screen"
     game <- get
-    drawBlock 7 5 $ itemStrings $ game^.player.inventory
+    drawBlock 7 5 $ itemStrings (\_ -> True) $ game^.player.inventory
 
-    where itemStrings :: [Item] -> [String]
-          itemStrings is = map (\(c, i) -> c : (" - " ++ (i^.i_name))) $ zip ['a'..] is
+drawScreen EquipItem = do
+    drawStr 5 5 "Equip Item"
+    game <- get
+    drawBlock 7 5 $ itemStrings (\i -> i^.i_attackPower > 0 || i^.i_defensePower > 0) $ game^.player.inventory
+
+itemStrings :: (Item -> Bool) -> [Item] -> [String]
+itemStrings filt is = map (\(c, i) -> c : (" - " ++ (i^.i_name))) $ zip ['a'..] (P.filter filt is)
+
 
 drawItem :: Item -> GameIOState ()
 drawItem item = do
@@ -99,9 +105,11 @@ drawHud = get >>= \game -> do
         loc = show $ p^.location
         health = show (p^.hp) ++ "/" ++ show (p^.maxHp)
         inv = show (length (p^.inventory)) ++ "/" ++ show (p^.maxInv)
+        ap = show $ creatureAttack p
+        def = show $ creatureDefense p
     resetColor
     drawStr gameHeight 0 $
-        "loc=" ++ loc ++ " hp=[" ++ health ++ "] inv=[" ++ inv ++ "]"
+        "loc=" ++ loc ++ " hp=[" ++ health ++ "] inv=[" ++ inv ++ "] ap=" ++ ap ++ " def=" ++ def
 
 getOffsets :: GameIOState (Int, Int)
 getOffsets = do

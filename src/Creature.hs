@@ -3,6 +3,9 @@ module Creature
     , move
     , playerPickup
     , playerDropItem
+    , creatureAttack
+    , creatureDefense
+    , equip
     ) where
 
 import Prelude hiding (floor)
@@ -11,6 +14,7 @@ import Control.Lens
 import Control.Monad (when, unless)
 import Control.Monad.State.Strict (execState, get, runState)
 import Data.Map.Strict as M
+import Data.Maybe (isJust, fromJust)
 import Data.Array as A
 
 import Game
@@ -62,9 +66,25 @@ action c action = get >>= \game -> return $ if c == game^.player
 target :: Creature -> GameState String
 target c = get >>= \game -> return $ if c == game^.player then "you" else "the " ++ c^.name
 
+itemDefensePower :: Creature -> Int
+itemDefensePower c = weapDef + armDef
+    where weapDef = maybe 0 _i_defensePower $ c^.weapon
+          armDef  = maybe 0 _i_defensePower $ c^.armor
+
+itemAttackPower :: Creature -> Int
+itemAttackPower c = weapVal + armVal
+    where weapVal = maybe 0 _i_attackPower (c^.weapon)
+          armVal  = maybe 0 _i_attackPower (c^.armor)
+
+creatureAttack :: Creature -> Int
+creatureAttack c = c^.attack_power + itemAttackPower c
+
+creatureDefense :: Creature -> Int
+creatureDefense c = c^.defense + itemDefensePower c
+
 attack :: Creature -> Creature -> GameState()
 attack creature other = get >>= \game -> do
-    let maxAttack = creature^.attack_power - other^.defense
+    let maxAttack = creatureAttack  creature - creatureDefense other
     attackValue <- randomR (1, maxAttack)
     let other' = (hp -~ attackValue) other
     attackStr <- action creature "attack"
@@ -154,6 +174,25 @@ playerDropItem ix = do
     player.inventory %= (remove ix)
     let loc = game^.player.location
     items %= insert loc (item {_i_location = loc})
+    unequip item
 
     where remove ix xs = let (bs, cs) = splitAt ix xs
                          in bs ++ tail cs
+
+equip :: Item -> GameState ()
+equip i = do
+    let ap = i^.i_attackPower
+        dp = i^.i_defensePower
+    if ap >= dp
+       then player.weapon .= Just i
+       else player.armor .= Just i
+
+unequip :: Item -> GameState ()
+unequip i = do
+    game <- get
+    let mweap = game^.player.weapon
+        marm = game^.player.armor
+        isWeap = isJust mweap && fromJust mweap == i
+        isArm = isJust marm && fromJust marm == i
+    when isWeap $ player.weapon .= Nothing
+    when isArm $ player.armor .= Nothing

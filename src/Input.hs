@@ -10,36 +10,31 @@ import Control.Monad (when)
 import Control.Monad.State.Strict (get)
 import Data.Array
 import Data.Map.Strict as M (adjust)
+import Data.Maybe (isJust, fromJust)
 import UI.HSCurses.Curses as C (Key(..), getCh)
 
 import Game
-import Creature (move, playerPickup, playerDropItem)
+import Creature (move, playerPickup, playerDropItem, equip)
 import World (creatureAt, isFloor, floor, tileAt, stairsDown, stairsUp)
 
 getInput :: IO Key
 getInput = getCh
 
-processInputScreen :: Screen -> Key -> GameState ()
-processInputScreen Start (KeyChar key) =
+processInputScreen :: Screen -> Char -> GameState ()
+processInputScreen Start key =
     case key of
-         '\n' -> uis .= [Play]
-         'q' -> quit
-         _ -> return ()
+         _ -> uis .= [Play]
 
-processInputScreen Win (KeyChar key) =
+processInputScreen Win key =
     case key of
-         '\ESC' -> quit
-         _ -> uis .= [Start]
+         _ -> quit
 
-processInputScreen Lose (KeyChar key) =
+processInputScreen Lose key =
     case key of
-         '\ESC' -> quit
-         _ -> uis .= [Start]
+         _ -> quit
 
-processInputScreen Play (KeyChar key) =
+processInputScreen Play key =
     case key of
-         '\DEL' -> lose
-         'q' -> quit
          'h' -> movePlayer W
          'l' -> movePlayer E
          'k' -> movePlayer N
@@ -51,24 +46,47 @@ processInputScreen Play (KeyChar key) =
          '>' -> climb Down
          '<' -> climb Up
          ',' -> playerPickup
-         'd' -> uis %= (\us -> us ++ [DropItem])
+         'd' -> pushScreen DropItem
+         'e' -> pushScreen EquipItem
          _ -> updated .= False
 
-processInputScreen DropItem (KeyChar key) = do
-    updated .= False
+processInputScreen DropItem key = inventoryScreen key $ \ix -> playerDropItem ix
+
+processInputScreen EquipItem key = inventoryScreen key $ \ix -> do
     game <- get
-    let ks = take (length $ game^.player.inventory) $ zip [0..] ['a'..]
-        ks' = filter (\(_,k) -> k == key) ks
-    when (not $ null ks') $ do
-        let ix = (fst . head) ks'
-        playerDropItem ix
+    let inv = game^.player.inventory
+        item = inv !! ix
+    equip item
+
+inventoryScreen :: Char -> (Int -> GameState()) -> GameState ()
+inventoryScreen key action = do
+    mix <- selectedItem key
+    when (isJust mix) $ do
+        let ix = fromJust mix
+        action ix
         updated .= True
         uis %= init
     case key of
          '\ESC' -> uis %= init
          _ -> return ()
 
-processInputScreen _ _ = return ()
+selectedItem :: Char -> GameState (Maybe Int)
+selectedItem key = do
+    game <- get
+    let ks = take (length $ game^.player.inventory) $ zip [0..] ['a'..]
+        ks' = filter (\(_,k) -> k == key) ks
+    return $ if null ks' then Nothing else Just $ (fst . head) ks'
+
+pushScreen :: Screen -> GameState ()
+pushScreen ui = uis %= (\us -> us ++ [ui])
+
+endGame :: GameState ()
+endGame = do
+    game <- get
+    let inv = game^.player.inventory
+        vi = filter (\i -> i^.i_glyph == '*') inv
+    when (null vi) lose
+    when (not $ null vi) win
 
 climb :: Climb -> GameState ()
 climb dir = do
@@ -79,7 +97,7 @@ climb dir = do
         move (game^.player) $ offsetClimb dir
     when (tile == stairsUp && dir == Up) $ do
         when (depth == 0) $
-            win
+            endGame
         when (depth /= 0) $
             move (game^.player) $ offsetClimb dir
 
@@ -90,7 +108,8 @@ movePlayer dir = do
     move creature $ offsetDir dir
 
 processInput :: Key -> GameState ()
-processInput key = do
+processInput (KeyChar key) = do
     game <- get
     updated .= True
+    when (key == 'q') quit
     processInputScreen (ui game) key

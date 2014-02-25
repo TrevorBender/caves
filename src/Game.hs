@@ -6,7 +6,7 @@ import Control.Lens
 import Control.Monad (when)
 import Control.Monad.State.Strict (State, get)
 import Data.Array as A
-import Data.Map.Strict as M (Map, (!), insert)
+import Data.Map.Strict as M (Map, (!), insert, fromAscList)
 import System.Random (StdGen)
 import System.IO (hPutStrLn, stderr)
 import System.IO.Unsafe (unsafePerformIO)
@@ -20,7 +20,7 @@ gameDepth = 5
 
 debugOn = False
 
-data Screen = Start | Win | Lose | Play | DropItem
+data Screen = Start | Win | Lose | Play | DropItem | EquipItem
 
 type Coord = (Int, Int, Int)
 
@@ -29,15 +29,36 @@ data StyleType = DefaultStyle
                | FungusStyle
                | OutOfSiteStyle
                | BatStyle
+               | VictoryItemStyle
+               | SwordStyle
+               | StaffStyle
                deriving (Eq, Ord)
+
+styleMap :: Map StyleType Style
+styleMap = M.fromAscList
+         [ (DefaultStyle, defaultStyle)
+         , (PlayerStyle, AttributeStyle [Bold] DefaultF DarkBlueB)
+         , (FungusStyle, AttributeStyle [Bold] GreenF DefaultB)
+         , (OutOfSiteStyle, AttributeStyle [Bold] WhiteF BlackB)
+         , (BatStyle, AttributeStyle [Bold] BrownF DefaultB)
+         , (VictoryItemStyle, AttributeStyle [Bold] YellowF DefaultB)
+         , (SwordStyle, AttributeStyle [] CyanF DefaultB)
+         , (StaffStyle, AttributeStyle [] BrownF DefaultB)
+         ]
 
 data Item = Item
     { _i_glyph :: Char
     , _i_style :: StyleType
+    , _i_id :: Int
     , _i_name :: String
     , _i_location :: Coord
+    , _i_attackPower :: Int
+    , _i_defensePower :: Int
     }
 makeLenses ''Item
+
+instance Eq Item where
+    (==) a b = a^.i_id == b^.i_id
 
 data CreatureKind = Player | Fungus | Bat
 data Creature = Creature
@@ -54,6 +75,8 @@ data Creature = Creature
     , _visionRadius :: Int
     , _inventory :: [Item]
     , _maxInv :: Int
+    , _weapon :: Maybe Item
+    , _armor :: Maybe Item
     }
 makeLenses ''Creature
 

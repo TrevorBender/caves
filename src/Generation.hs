@@ -1,6 +1,5 @@
 module Generation
     ( createGame
-    , createFungus
     ) where
 
 import Prelude as P hiding (floor)
@@ -21,74 +20,10 @@ import UI.HSCurses.CursesHelper
 import Game
 import World
 import Random
+import Creature (createPlayer, createFungus, createBat)
 
-emptyInventory = []
-
-createPlayer :: Creature
-createPlayer = Creature
-    { _location = (0,0,0) -- temporary location
-    , _c_kind = Player
-    , _c_glyph = '@'
-    , _c_style = PlayerStyle
-    , _c_id = 0
-    , _name = "<fixme: you>"
-    , _attack_power = 10
-    , _defense = 3
-    , _hp = 40
-    , _maxHp = 40
-    , _visionRadius = 20
-    , _inventory = emptyInventory
-    , _maxInv = 20
-    , _weapon = Nothing
-    , _armor = Nothing
-    }
-
-createFungus :: Int -> GameState Creature
-createFungus depth = do
-    loc <- findEmptyLocation depth
-    thisId <- nextInt
-    return $ Creature
-        { _location = loc
-        , _c_kind = Fungus
-        , _c_glyph = 'f'
-        , _c_style = FungusStyle
-        , _c_id = thisId
-        , _name = "lichen"
-        , _attack_power = 0
-        , _defense = 1
-        , _hp = 1
-        , _maxHp = 1
-        , _visionRadius = 0
-        , _inventory = emptyInventory
-        , _maxInv = 0
-        , _weapon = Nothing
-        , _armor = Nothing
-        }
 fungiPerLevel = 5
-
-createBat :: Int -> GameState Creature
-createBat depth = do
-    loc <- findEmptyLocation depth
-    thisId <- nextInt
-    return $ Creature
-        { _location = loc
-        , _c_kind = Bat
-        , _c_glyph = 'b'
-        , _c_style = BatStyle
-        , _c_id = thisId
-        , _name = "bat"
-        , _attack_power = 4
-        , _defense = 4
-        , _hp = 5
-        , _maxHp = 5
-        , _visionRadius = 0
-        , _inventory = emptyInventory
-        , _maxInv = 0
-        , _weapon = Nothing
-        , _armor = Nothing
-        }
 batsPerLevel = 5
-
 
 populateGame :: GameState ()
 populateGame = do
@@ -140,109 +75,82 @@ createStairDown loc = do
     world %= (//[(reverseCoord loc, stairsDown), (reverseCoord lowerLoc, stairsUp)])
     return ()
 
-createRock :: Int -> GameState Item
-createRock depth = do
+item :: Item -> Int -> GameState Item
+item item depth = do
     loc <- findEmptyLocation depth
     id <- nextInt
-    return $ Item { _i_location = loc
-                  , _i_id = id
-                  , _i_name = "rock"
-                  , _i_style = DefaultStyle
-                  , _i_glyph = ','
-                  , _i_attackPower = 0
-                  , _i_defensePower = 0
-                  }
+    return item { _i_location = loc
+                , _i_id = id
+                }
+
+defaultItem = Item { _i_location = (0,0,0)
+                   , _i_id = -1
+                   , _i_name = "<fixme: default>"
+                   , _i_style = DefaultStyle
+                   , _i_glyph = 'X'
+                   , _i_attackPower = 0
+                   , _i_defensePower = 0
+                   }
+
+createRock :: Int -> GameState Item
+createRock = item defaultItem
+    { _i_name = "rock"
+    , _i_glyph = ','
+    }
 
 createVictoryItem :: GameState Item
-createVictoryItem = do
-    loc <- findEmptyLocation (gameDepth - 1)
-    id <- nextInt
-    return $ Item { _i_location = loc
-                  , _i_id = id
-                  , _i_name = "idol"
-                  , _i_style = VictoryItemStyle
-                  , _i_glyph = '*'
-                  , _i_attackPower = 0
-                  , _i_defensePower = 0
-                  }
+createVictoryItem = item defaultItem
+    { _i_name = "idol"
+    , _i_style = VictoryItemStyle
+    , _i_glyph = '*'
+    } (gameDepth-1)
 
 createDagger :: Int -> GameState Item
-createDagger depth= do
-    loc <- findEmptyLocation depth
-    id <- nextInt
-    return $ Item { _i_location = loc
-                  , _i_id = id
-                  , _i_name = "dagger"
-                  , _i_style = DefaultStyle
-                  , _i_glyph = ')'
-                  , _i_attackPower = 5
-                  , _i_defensePower = 0
-                  }
+createDagger = item defaultItem
+    { _i_name = "dagger"
+    , _i_glyph = ')'
+    , _i_attackPower = 5
+    }
 
 createSword :: Int -> GameState Item
-createSword depth= do
-    loc <- findEmptyLocation depth
-    id <- nextInt
-    return $ Item { _i_location = loc
-                  , _i_id = id
-                  , _i_name = "sword"
-                  , _i_style = SwordStyle
-                  , _i_glyph = ')'
-                  , _i_attackPower = 10
-                  , _i_defensePower = 0
-                  }
+createSword = item defaultItem
+    { _i_name = "sword"
+    , _i_style = SwordStyle
+    , _i_glyph = ')'
+    , _i_attackPower = 10
+    }
 
 createStaff :: Int -> GameState Item
-createStaff depth= do
-    loc <- findEmptyLocation depth
-    id <- nextInt
-    return $ Item { _i_location = loc
-                  , _i_id = id
-                  , _i_name = "staff"
-                  , _i_style = StaffStyle
-                  , _i_glyph = ')'
-                  , _i_attackPower = 5
-                  , _i_defensePower = 5
-                  }
+createStaff = item defaultItem
+    { _i_name = "staff"
+    , _i_style = StaffStyle
+    , _i_glyph = ')'
+    , _i_attackPower = 5
+    , _i_defensePower = 5
+    }
 
 createTunic :: Int -> GameState Item
-createTunic depth= do
-    loc <- findEmptyLocation depth
-    id <- nextInt
-    return $ Item { _i_location = loc
-                  , _i_id = id
-                  , _i_name = "tunic"
-                  , _i_style = DefaultStyle
-                  , _i_glyph = '['
-                  , _i_attackPower = 0
-                  , _i_defensePower = 2
-                  }
+createTunic = item defaultItem
+    { _i_name = "tunic"
+    , _i_style = StaffStyle
+    , _i_glyph = '['
+    , _i_defensePower = 2
+    }
 
 createChainmail :: Int -> GameState Item
-createChainmail depth= do
-    loc <- findEmptyLocation depth
-    id <- nextInt
-    return $ Item { _i_location = loc
-                  , _i_id = id
-                  , _i_name = "chainmail"
-                  , _i_style = DefaultStyle
-                  , _i_glyph = '['
-                  , _i_attackPower = 0
-                  , _i_defensePower = 4
-                  }
+createChainmail = item defaultItem
+    { _i_name = "chainmail"
+    , _i_style = SwordStyle
+    , _i_glyph = '['
+    , _i_defensePower = 4
+    }
 
 createPlatemail :: Int -> GameState Item
-createPlatemail depth= do
-    loc <- findEmptyLocation depth
-    id <- nextInt
-    return $ Item { _i_location = loc
-                  , _i_id = id
-                  , _i_name = "platemail"
-                  , _i_style = DefaultStyle
-                  , _i_glyph = '['
-                  , _i_attackPower = 0
-                  , _i_defensePower = 4
-                  }
+createPlatemail = item defaultItem
+    { _i_name = "platemail"
+    , _i_glyph = '['
+    , _i_defensePower = 4
+    }
 
 randomWeapon :: Int -> GameState Item
 randomWeapon depth = do

@@ -6,6 +6,9 @@ module Creature
     , creatureAttack
     , creatureDefense
     , equip
+    , createPlayer
+    , createFungus
+    , createBat
     ) where
 
 import Prelude hiding (floor)
@@ -19,14 +22,77 @@ import Data.Array as A
 
 import Game
 import Random
-import Generation (createFungus)
 import World ( isFloor, isCreature
              , isItem, seeThrough
              , creatureAt, floor
              , tileAt, itemAt
              , removeItemFromWorld
+             , findEmptyLocation
              )
 import Line (line)
+
+emptyInventory = []
+
+creatureDefaults :: Creature
+creatureDefaults = Creature { _location = (0,0,0)
+                            , _c_kind = Player
+                            , _c_glyph = 'X'
+                            , _c_style = DefaultStyle
+                            , _c_id = -1
+                            , _name = "<fixme: default>"
+                            , _attack_power = 0
+                            , _defense = 1
+                            , _hp = 1
+                            , _maxHp = 1
+                            , _visionRadius = 20
+                            , _inventory = emptyInventory
+                            , _maxInv = 0
+                            , _weapon = Nothing
+                            , _armor = Nothing
+                            }
+
+createPlayer :: Creature
+createPlayer = creatureDefaults
+    { _c_kind = Player
+    , _c_glyph = '@'
+    , _c_style = PlayerStyle
+    , _c_id = 0
+    , _name = "<fixme: you>"
+    , _attack_power = 10
+    , _defense = 1
+    , _hp = 40
+    , _maxHp = 40
+    , _maxInv = 20
+    }
+
+creature :: Creature -> Int -> GameState Creature
+creature constructor depth = do
+    loc <- findEmptyLocation depth
+    thisId <- nextInt
+    return $ constructor { _location = loc , _c_id = thisId }
+
+createFungus :: Int -> GameState Creature
+createFungus = creature creatureDefaults
+    { _c_kind = Fungus
+    , _c_glyph = 'f'
+    , _c_style = FungusStyle
+    , _name = "lichen"
+    , _defense = 1
+    , _hp = 1
+    , _maxHp = 1
+    }
+
+createBat :: Int -> GameState Creature
+createBat = creature creatureDefaults
+        { _c_kind = Bat
+        , _c_glyph = 'b'
+        , _c_style = BatStyle
+        , _name = "bat"
+        , _attack_power = 4
+        , _defense = 4
+        , _hp = 5
+        , _maxHp = 5
+        }
 
 creatureTick :: Creature -> GameState ()
 creatureTick c = creatureTick' (c^.c_kind) c
@@ -97,8 +163,8 @@ die :: Creature -> GameState ()
 die c = do
     game <- get
     let isPlayer = c == game^.player
-    when isPlayer $ lose
-    unless isPlayer $ do
+    if isPlayer then lose
+    else do
         let cs = delete (c^.c_id) (game^.creatures)
         creatures .= cs
         let msg name = "The " ++ name ++ " dies."
@@ -147,31 +213,25 @@ canMove loc = do
 inventoryFull :: Creature -> Bool
 inventoryFull c = length (c^.inventory) == c^.maxInv
 
-pickup :: Creature -> GameState ()
-pickup c = do
-    game <- get
-    let loc = c^.location
-        fullInv = inventoryFull c
-    hasItem <- isItem loc
-    when (not fullInv && hasItem) $ do
-        item <- itemAt loc
-        removeItemFromWorld loc
-        player.inventory %= (item:)
-
 playerPickup :: GameState ()
 playerPickup = do
     game <- get
-    pickup (game^.player)
-
-dropItem :: Creature -> Int -> GameState ()
-dropItem c i = do
-    return ()
+    let c = game^.player
+    let loc = c^.location
+        fullInv = inventoryFull c
+    itemThere <- isItem loc
+    when (not fullInv && itemThere) $ do
+        item <- itemAt loc
+        removeItemFromWorld loc
+        player.inventory %= (item:)
+        notify (game^.player.location) $ "You pickup a " ++ (item^.i_name)
 
 playerDropItem :: Int -> GameState ()
 playerDropItem ix = do
     game <- get
     let item = (game^.player.inventory) !! ix
     player.inventory %= (remove ix)
+    notify (game^.player.location) $ "You drop the " ++ (item^.i_name)
     let loc = game^.player.location
     items %= insert loc (item {_i_location = loc})
     unequip item
@@ -183,6 +243,8 @@ equip :: Item -> GameState ()
 equip i = do
     let ap = i^.i_attackPower
         dp = i^.i_defensePower
+    game <- get
+    notify (game^.player.location) $ "You equip the " ++ i^.i_name
     if ap >= dp
        then player.weapon .= Just i
        else player.armor .= Just i

@@ -15,7 +15,7 @@ line (x0, y0) (x1, y1) =
                 err'' = if e2 < dx then err' + dx else err'
                 y0' = if e2 < dx then y0 + sy else y0
                 in if x0 == x1 && y0 == y1
-                      then []
+                      then [(x0, y0)]
                       else (x0, y0) : line' x0' y0' err''
 
-        in (x0, y0) : line' x0 y0 err
+        in line' x0 y0 err

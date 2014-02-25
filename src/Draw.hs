@@ -45,14 +45,11 @@ drawScreen Start = do
     drawBlock 15 4 [ "Press [any key] to Start Playing"
                    ]
 
-drawScreen Win = do
-    drawStr 4 4 "You WIN!"
+drawScreen Win = drawStr 4 4 "You WIN!"
 
-drawScreen Lose = do
-    drawStr 4 4 "You LOSE!"
+drawScreen Lose = drawStr 4 4 "You LOSE!"
 
 drawScreen Play = do
-    game <- get
     drawLevel
     drawItems
     drawPlayer
@@ -60,19 +57,20 @@ drawScreen Play = do
     drawHud
     drawMessages
 
-drawScreen DropItem = do
-    drawStr 5 5 "Drop item screen"
-    game <- get
-    drawBlock 7 5 $ itemStrings (\_ -> True) $ game^.player.inventory
+drawScreen DropItem = drawInventoryScreen "Drop Item" $ \_ -> True
 
-drawScreen EquipItem = do
-    drawStr 5 5 "Equip Item"
+drawScreen EquipItem = drawInventoryScreen "Equip Item" $ \i -> i^.i_attackPower > 0 || i^.i_defensePower > 0
+
+drawInventoryScreen :: String -> (Item -> Bool) -> GameIOState ()
+drawInventoryScreen str filt = do
+    drawStr 5 5 str
+    drawStr 6 5 "                "
     game <- get
-    drawBlock 7 5 $ itemStrings (\i -> i^.i_attackPower > 0 || i^.i_defensePower > 0) $ game^.player.inventory
+    drawBlock 7 5 $ itemStrings filt $ game^.player.inventory
+
 
 itemStrings :: (Item -> Bool) -> [Item] -> [String]
 itemStrings filt is = map (\(c, i) -> c : (" - " ++ (i^.i_name))) $ zip ['a'..] (P.filter filt is)
-
 
 drawItem :: Item -> GameIOState ()
 drawItem item = do

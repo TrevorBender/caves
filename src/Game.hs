@@ -211,14 +211,20 @@ notify loc s = do
         inRange = sameDepth loc ploc && distanceSq loc ploc <= vision * vision
     when inRange $ messages %= (s:)
 
+pushScreen :: Screen -> GameState ()
+pushScreen ui = uis %= (\us -> us ++ [ui])
+
+dropScreen :: GameState ()
+dropScreen = uis %= init
+
 lose :: GameState ()
-lose = uis .= [Lose]
+lose = pushScreen Lose
 
 quit :: GameState ()
 quit = uis .= []
 
 win :: GameState ()
-win = uis .= [Win]
+win = pushScreen Win
 
 debug :: String -> a -> a
 debug str x = if debugOn then debug' str x else x

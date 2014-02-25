@@ -65,7 +65,7 @@ inventoryScreen key action = do
         let ix = fromJust mix
         action ix
         updated .= True
-        uis %= init
+        dropScreen
     case key of
          '\ESC' -> uis %= init
          _ -> return ()
@@ -76,9 +76,6 @@ selectedItem key = do
     let ks = take (length $ game^.player.inventory) $ zip [0..] ['a'..]
         ks' = filter (\(_,k) -> k == key) ks
     return $ if null ks' then Nothing else Just $ (fst . head) ks'
-
-pushScreen :: Screen -> GameState ()
-pushScreen ui = uis %= (\us -> us ++ [ui])
 
 endGame :: GameState ()
 endGame = do

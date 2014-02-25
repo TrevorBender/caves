@@ -48,7 +48,7 @@ processInputScreen Play key =
          ',' -> playerPickup
          'd' -> pushScreen DropItem
          'e' -> pushScreen EquipItem
-         _ -> updated .= False
+         _   -> updated .= False
 
 processInputScreen DropItem key = inventoryScreen key $ \ix -> playerDropItem ix
 
@@ -67,7 +67,7 @@ inventoryScreen key action = do
         updated .= True
         dropScreen
     case key of
-         '\ESC' -> uis %= init
+         '\ESC' -> dropScreen
          _ -> return ()
 
 selectedItem :: Char -> GameState (Maybe Int)

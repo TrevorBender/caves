@@ -66,11 +66,11 @@ drawInventoryScreen str filt = do
     drawStr 5 5 str
     drawStr 6 5 "                "
     game <- get
-    drawBlock 7 5 $ itemStrings filt $ game^.player.inventory
+    drawBlock 7 5 $ itemStrings filt [game^.player.weapon, game^.player.armor] $ game^.player.inventory
 
 
-itemStrings :: (Item -> Bool) -> [Item] -> [String]
-itemStrings filt is = map (\(c, i) -> c : (" - " ++ (i^.i_name))) $ zip ['a'..] (P.filter filt is)
+itemStrings :: (Item -> Bool) -> [Maybe Item] -> [Item] -> [String]
+itemStrings filt mes is = map (\(c, i) -> c : (" - " ++ (i^.i_name) ++ if elem (Just i) mes then " *" else "" )) $ P.filter (\(c,i) -> filt i) $ zip ['a'..] is
 
 drawItem :: Item -> GameIOState ()
 drawItem item = do

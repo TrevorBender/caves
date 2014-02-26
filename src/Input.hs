@@ -15,7 +15,7 @@ import UI.HSCurses.Curses as C (Key(..), getCh)
 
 import Game
 import Creature (move, playerPickup, playerDropItem, equip)
-import World (creatureAt, isFloor, floor, tileAt, stairsDown, stairsUp)
+import World (creatureAt, isFloor, floor, tileAt', stairsDown, stairsUp)
 
 getInput :: IO Key
 getInput = getCh
@@ -53,9 +53,7 @@ processInputScreen Play key =
 processInputScreen DropItem key = inventoryScreen key $ \ix -> playerDropItem ix
 
 processInputScreen EquipItem key = inventoryScreen key $ \ix -> do
-    game <- get
-    let inv = game^.player.inventory
-        item = inv !! ix
+    item <- use $ player.inventory. to (!! ix)
     equip item
 
 inventoryScreen :: Char -> (Int -> GameState()) -> GameState ()
@@ -72,41 +70,39 @@ inventoryScreen key action = do
 
 selectedItem :: Char -> GameState (Maybe Int)
 selectedItem key = do
-    game <- get
-    let ks = take (length $ game^.player.inventory) $ zip [0..] ['a'..]
+    inv <- use $ player.inventory
+    let ks = take (length $ inv) $ zip [0..] ['a'..]
         ks' = filter (\(_,k) -> k == key) ks
     return $ if null ks' then Nothing else Just $ (fst . head) ks'
 
 endGame :: GameState ()
 endGame = do
-    game <- get
-    let inv = game^.player.inventory
-        vi = filter (\i -> i^.i_glyph == '*') inv
+    inv <- use $ player.inventory
+    let vi = filter (\i -> i^.i_glyph == '*') inv
     when (null vi) lose
     when (not $ null vi) win
 
 climb :: Climb -> GameState ()
 climb dir = do
-    game <- get
-    let loc@(_,_,depth) = game^.player^.location
-        tile = tileAt game loc
+    p <- use player
+    let loc@(_,_,depth) = p^.location
+    tile <- tileAt' loc
     when (tile == stairsDown && dir == Down) $
-        move (game^.player) $ offsetClimb dir
+        move p $ offsetClimb dir
     when (tile == stairsUp && dir == Up) $ do
         when (depth == 0) $
             endGame
         when (depth /= 0) $
-            move (game^.player) $ offsetClimb dir
+            move p $ offsetClimb dir
 
 movePlayer :: Direction -> GameState ()
 movePlayer dir = do
-    game <- get
-    let creature = game^.player
-    move creature $ offsetDir dir
+    p <- use player
+    move p $ offsetDir dir
 
 processInput :: Key -> GameState ()
 processInput (KeyChar key) = do
-    game <- get
     updated .= True
+    screen <- ui
     when (key == 'q') quit
-    processInputScreen (ui game) key
+    processInputScreen screen key

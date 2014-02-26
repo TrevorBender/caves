@@ -46,24 +46,21 @@ createVictoryStairs = do
 
 createStairs :: GameState ()
 createStairs = do
-    game <- get
-    let (_,rMap,nMap) = game^.regionMap
-        rNums = M.keys $ M.filter (\locs -> any (\(_,_,z) -> z < gameDepth - 1) locs) nMap
+    (_,rMap,nMap) <- use regionMap
+    let rNums = M.keys $ M.filter (\locs -> any (\(_,_,z) -> z < gameDepth - 1) locs) nMap
     forM_ rNums connectRegionsDown
 
 connectRegionsDown :: Int -> GameState ()
 connectRegionsDown num = do
-    game <- get
-    let (_,rMap,nMap) = game^.regionMap
-        (_,_,depth) = head $ nMap ! num
+    (_,rMap,nMap) <- use regionMap
+    let (_,_,depth) = head $ nMap ! num
         rBelow = M.keys $ M.filter (\locs -> any (\(_,_,z) -> z == depth + 1) locs) nMap
     forM_ rBelow (connectRegionDown depth num)
 
 connectRegionDown :: Int -> Int -> Int -> GameState ()
 connectRegionDown depth r1 r2 = do
-    game <- get
-    let (_,_,nMap) = game^.regionMap
-        adjusted = map (\(x,y,z) -> (x,y,z-1)) (nMap ! r2)
+    (_,_,nMap) <- use regionMap
+    let adjusted = map (\(x,y,z) -> (x,y,z-1)) (nMap ! r2)
         overlap = intersect (nMap ! r1) adjusted
     unless (null overlap) $ replicateM_ (ceiling $ fromIntegral (length overlap) / 250) $ do
         loc <- randomL overlap
@@ -187,7 +184,7 @@ updateNewGame = execState $ do
     removeSmallRegions
     createStairs
     createVictoryStairs
-    findEmptyLocation 0 >>= (player.location .=)
+    (player.location .=) =<< findEmptyLocation 0
     populateGame
     createItems
     cleanUp
@@ -195,7 +192,7 @@ updateNewGame = execState $ do
 fillRegion :: Coord                   -- ^ Starting location
            -> Int                     -- ^ Region number
            -> GameWorld               -- ^ 3D game world
-           -> RegionMap        -- ^ resulting region map and size
+           -> RegionMap               -- ^ resulting region map and size
 fillRegion loc num world = execState (dfs' loc world) (num, M.empty, M.empty)
     where dfs' :: Coord -> GameWorld -> State RegionMap ()
           dfs' loc world = do
@@ -210,9 +207,8 @@ fillRegion loc num world = execState (dfs' loc world) (num, M.empty, M.empty)
 
 removeSmallRegions :: GameState ()
 removeSmallRegions = do
-    game <- get
-    let (_,rMap,nMap) = game^.regionMap
-        smallRegions = M.filter (\xs -> length xs < 25) nMap
+    (_,rMap,nMap) <- use regionMap
+    let smallRegions = M.filter (\xs -> length xs < 25) nMap
     forM_ (M.keys smallRegions) removeSmallRegion
 
 deleteAll :: [Coord] -> Map Coord (Maybe Int) -> Map Coord (Maybe Int)
@@ -220,9 +216,8 @@ deleteAll ks = mapWithKey (\k x -> if elem k ks then Nothing else x)
 
 removeSmallRegion :: Int -> GameState ()
 removeSmallRegion num = do
-    game <- get
-    let (rNum,rMap,nMap) = game^.regionMap
-        locs = nMap ! num
+    (rNum,rMap,nMap) <- use regionMap
+    let locs = nMap ! num
         assocList = map (\loc -> (reverseCoord loc, wall)) locs
     world %= (// assocList)
     regionMap .= (rNum, deleteAll locs rMap, delete num nMap)
@@ -230,8 +225,8 @@ removeSmallRegion num = do
 
 createRegionMap :: GameState ()
 createRegionMap = do
-    game <- get
-    let rMap = foldr (toRegionMap $ game^.world) (0,M.empty,M.empty) (A.assocs $ game^.world)
+    w <- use world
+    let rMap = foldr (toRegionMap w) (0,M.empty,M.empty) (A.assocs w)
     regionMap .= rMap
 
     where toRegionMap :: GameWorld -> (Coord, Tile) -> RegionMap -> RegionMap

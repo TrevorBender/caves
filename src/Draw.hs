@@ -21,20 +21,23 @@ import Creature (creatureAttack, creatureDefense)
 
 type GameIOState = StateT Game IO
 
+-- TODO use uis + forM_ uis , better way?
 drawGame :: GameIOState ()
 drawGame = do
-    game <- get
+    uis <- use uis
     resetColor
-    forM_ (game^.uis) drawScreen
+    forM_ uis drawScreen
     liftIO refresh
 
 drawBlock :: Int -> Int -> [String] -> GameIOState ()
-drawBlock y x strs = get >>= \game ->
-    mapM_  (\(i, s) -> liftIO $ mvWAddStr (game^.window) (y + i) x s)
-    (zip [0..] strs)
+drawBlock y x strs = do
+    w <- use window
+    mapM_  (\(i, s) -> liftIO $ mvWAddStr w (y + i) x s) (zip [0..] strs)
 
 drawStr :: Int -> Int -> String -> GameIOState ()
-drawStr y x str = get >>= \game -> liftIO $ mvWAddStr (game^.window) y x str
+drawStr y x str = do
+    w <- use window
+    liftIO $ mvWAddStr w y x str
 
 drawScreen :: Screen -> GameIOState ()
 drawScreen Start = do
@@ -65,12 +68,13 @@ drawInventoryScreen :: String -> (Item -> Bool) -> GameIOState ()
 drawInventoryScreen str filt = do
     drawStr 5 5 str
     drawStr 6 5 "                "
-    game <- get
-    drawBlock 7 5 $ itemStrings filt [game^.player.weapon, game^.player.armor] $ game^.player.inventory
+    p <- use player
+    drawBlock 7 5 $ itemStrings filt [p^.weapon, p^.armor] $ p^.inventory
 
 
 itemStrings :: (Item -> Bool) -> [Maybe Item] -> [Item] -> [String]
-itemStrings filt mes is = map (\(c, i) -> c : (" - " ++ (i^.i_name) ++ if elem (Just i) mes then " *" else "" )) $ P.filter (\(c,i) -> filt i) $ zip ['a'..] is
+itemStrings filt mes = map i2s . P.filter (\(_,i) -> filt i) . zip ['a'..]
+    where i2s (c, i) = c : (" - " ++ (i^.i_name) ++ if elem (Just i) mes then " *" else "" )
 
 drawItem :: Item -> GameIOState ()
 drawItem item = do
@@ -85,22 +89,25 @@ drawItem item = do
         drawStr sy sx [glyph]
 
 drawItems :: GameIOState ()
-drawItems = get >>= \game -> do
-    let gz = game^.player.location
-        p = game^.player
+drawItems = do
+    game <- get
+    p <- use player
+    is <- use items
+    let gz = p^.location
         visibleItem loc item = canSee game loc p
-        visItems = M.filterWithKey visibleItem (game^.items)
+        visItems = M.filterWithKey visibleItem is
     forM_ (M.elems visItems) drawItem
 
 drawMessages :: GameIOState ()
-drawMessages = get >>= \game -> do
-    forM_ (zip [1..] (reverse $ game^.messages)) $ \(i, msg) -> drawStr (gameHeight + i) 5 msg
+drawMessages = do
+    ms <- use messages
+    forM_ (zip [1..] (reverse $ ms)) $ \(i, msg) -> drawStr (gameHeight + i) 5 msg
     messages .= []
 
 drawHud :: GameIOState ()
-drawHud = get >>= \game -> do
-    let p = game^.player
-        loc = show $ p^.location
+drawHud = do
+    p <- use player
+    let loc = show $ p^.location
         health = show (p^.hp) ++ "/" ++ show (p^.maxHp)
         inv = show (length (p^.inventory)) ++ "/" ++ show (p^.maxInv)
         ap = show $ creatureAttack p
@@ -111,17 +118,18 @@ drawHud = get >>= \game -> do
 
 getOffsets :: GameIOState (Int, Int)
 getOffsets = do
-    game <- get
+    loc <- use $ player.location
     (sh,sw) <- liftIO scrSize
-    let (px,py,_) = game^.player^.location
+    let (px,py,_) = loc
         offsetX = max 0 (min (px - (sw `div` 2)) (gameWidth - sw))
         offsetY = max 0 (min (py - (sh `div` 2)) (gameHeight - sh))
     return (offsetX, offsetY)
 
 drawCreatures :: GameIOState ()
 drawCreatures = do
-    game <- get
-    forM_ (M.elems $ M.filter (sameDepth (game^.player)) $ game^.creatures) drawCreature
+    p <- use player
+    cs <- use creatures
+    forM_ (M.elems $ M.filter (sameDepth p) $ cs) drawCreature
     where sameDepth p c = depth == playerDepth
             where (_,_,depth) = c^.location
                   (_,_,playerDepth) = p^.location
@@ -140,11 +148,12 @@ toChar i = [ch]
 
 drawRegionNumbers :: GameIOState ()
 drawRegionNumbers = do
-    game <- get
+    loc <- use $ player.location
+    rm <- use regionMap
     (ox,oy) <- getOffsets
     (sh,sw) <- liftIO scrSize
-    let (_,_,depth) = game^.player.location
-        (_,rMap,_) = game^.regionMap
+    let (_,_,depth) = loc
+        (_,rMap,_) = rm
         regionAssocs = P.filter (\((x,y,z),mr) -> z == depth && isJust mr) (M.assocs rMap)
         regionAssocs' = map (\((x,y,z),Just r) -> ((x-ox, y-oy), r)) regionAssocs
     forM_ regionAssocs' $ \((x,y), num) -> do
@@ -199,4 +208,4 @@ drawCreature creature = do
         drawStr sy sx [glyph]
 
 drawPlayer :: GameIOState ()
-drawPlayer = get >>= \game -> drawCreature (game^.player)
+drawPlayer = use player >>= drawCreature

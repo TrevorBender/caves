@@ -4,7 +4,7 @@ module Game where
 
 import Control.Lens
 import Control.Monad (when)
-import Control.Monad.State.Strict (State, get)
+import Control.Monad.State.Strict (State, get, MonadState)
 import Data.Array as A
 import Data.Map.Strict as M (Map, (!), insert, fromAscList)
 import System.Random (StdGen)
@@ -129,21 +129,13 @@ player f game =
 type GameState = State Game
 
 nextInt :: GameState Int
-nextInt = do
-    game <- get
-    let cur = game^.curId
-        next = cur + 1
-    curId .= next
-    return next
+nextInt = curId <+= 1
 
 getStyle :: StyleType -> Game -> CursesStyle
 getStyle styleType game = (game^.styles) M.! styleType
 
-getStyle' :: StyleType -> GameState CursesStyle
-getStyle' styleType = get >>= \game -> return $ getStyle styleType game
-
-ui :: Game -> Screen
-ui game = last $ game^.uis
+ui :: GameState Screen
+ui = use $ uis.to last
 
 splitBy :: Int -> [a] -> [[a]]
 splitBy width [] = []
@@ -205,14 +197,14 @@ sameDepth (_,_,z) (_,_,z') = z == z'
 
 notify :: Coord -> String -> GameState ()
 notify loc s = do
-    game <- get
-    let ploc = game^.player.location
-        vision = game^.player.visionRadius
+    p <- use player
+    let ploc = p^.location
+        vision = p^.visionRadius
         inRange = sameDepth loc ploc && distanceSq loc ploc <= vision * vision
     when inRange $ messages %= (s:)
 
 pushScreen :: Screen -> GameState ()
-pushScreen ui = uis %= (\us -> us ++ [ui])
+pushScreen ui = uis %= (++ [ui])
 
 dropScreen :: GameState ()
 dropScreen = uis %= init
@@ -233,4 +225,4 @@ debug str x = if debugOn then debug' str x else x
               return x
 
 gameChanged :: GameState Bool
-gameChanged = get >>= \game -> return $ game^.updated
+gameChanged = use updated

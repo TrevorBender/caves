@@ -25,7 +25,7 @@ import Random
 import World ( isFloor, isCreature
              , isItem, seeThrough
              , creatureAt, floor
-             , tileAt, itemAt
+             , tileAt', itemAt
              , removeItemFromWorld
              , findEmptyLocation
              )
@@ -100,7 +100,6 @@ creatureTick c = creatureTick' (c^.c_kind) c
 creatureTick' :: CreatureKind -> Creature -> GameState ()
 
 creatureTick' Fungus c = do
-    game <- get
     let loc@(_,_,depth) = c^.location
     r <- randomR (0,99)
     when (r == 99) $ do
@@ -117,7 +116,6 @@ creatureTick' Fungus c = do
                 creatures %= (insert (fungus^.c_id) fungus')
 
 creatureTick' Bat bat = do
-    game <- get
     dir <- randomL [N,E,S,W,NE,SE,SW,NW]
     let offset = offsetDir dir
     move bat offset
@@ -125,12 +123,16 @@ creatureTick' Bat bat = do
 creatureTick' _ _ = return ()
 
 action :: Creature -> String -> GameState String
-action c action = get >>= \game -> return $ if c == game^.player
-                                               then "You " ++ action
-                                               else c^.name ++ " " ++  action ++ "s"
+action c action = do
+    p <- use player
+    return $ if c == p
+                then "You " ++ action
+                else c^.name ++ " " ++  action ++ "s"
 
 target :: Creature -> GameState String
-target c = get >>= \game -> return $ if c == game^.player then "you" else "the " ++ c^.name
+target c = do
+    p <- use player
+    return $ if c == p then "you" else "the " ++ c^.name
 
 itemDefensePower :: Creature -> Int
 itemDefensePower c = weapDef + armDef
@@ -161,28 +163,23 @@ attack creature other = get >>= \game -> do
 
 die :: Creature -> GameState ()
 die c = do
-    game <- get
-    let isPlayer = c == game^.player
+    isPlayer <- use $ player .to (c==)
     if isPlayer then lose
     else do
-        let cs = delete (c^.c_id) (game^.creatures)
-        creatures .= cs
+        creatures %= delete (c^.c_id)
         let msg name = "The " ++ name ++ " dies."
         notify (c^.location) $ msg (c^.name)
 
 updateCreature :: Creature -> GameState ()
-updateCreature c = do
-    game <- get
-    let cs = insert (c^.c_id) c (game^.creatures)
-    creatures .= cs
+updateCreature c = creatures %= insert (c^.c_id) c
 
+-- TODO refactor deep nesting
 move :: Creature -> Coord -> GameState ()
 move creature offset = do
-    game <- get
+    p <- use player
     let origin = creature^.location
         move origin = origin <+> offset
         loc = move origin
-        p = game^.player
     when (inBounds loc) $ do
         mc <- creatureAt loc
         canMove <- canMove loc
@@ -200,14 +197,13 @@ move creature offset = do
 
 dig :: Coord -> GameState ()
 dig loc = do
-    game <- get
+    loc <- use $ player.location
     world %= (//[(reverseCoord loc, floor)])
-    notify (game^.player.location) $ "You dig."
+    notify loc $ "You dig."
 
 canMove :: Coord -> GameState Bool
 canMove loc = do
-    game <- get
-    let tile = tileAt game loc
+    tile <- tileAt' loc
     return $ tile^.kind `elem` [ Floor, StairsUp, StairsDown ]
 
 inventoryFull :: Creature -> Bool
@@ -215,8 +211,7 @@ inventoryFull c = length (c^.inventory) == c^.maxInv
 
 playerPickup :: GameState ()
 playerPickup = do
-    game <- get
-    let c = game^.player
+    c <- use player
     let loc = c^.location
         fullInv = inventoryFull c
     itemThere <- isItem loc
@@ -224,15 +219,14 @@ playerPickup = do
         item <- itemAt loc
         removeItemFromWorld loc
         player.inventory %= (item:)
-        notify (game^.player.location) $ "You pickup a " ++ (item^.i_name)
+        notify loc $ "You pickup a " ++ (item^.i_name)
 
 playerDropItem :: Int -> GameState ()
 playerDropItem ix = do
-    game <- get
-    let item = (game^.player.inventory) !! ix
+    loc <- use $ player.location
+    item <- use $ player.inventory .to (!! ix)
     player.inventory %= (remove ix)
-    notify (game^.player.location) $ "You drop the " ++ (item^.i_name)
-    let loc = game^.player.location
+    notify loc $ "You drop the " ++ (item^.i_name)
     items %= insert loc (item {_i_location = loc})
     unequip item
 
@@ -243,18 +237,17 @@ equip :: Item -> GameState ()
 equip i = do
     let ap = i^.i_attackPower
         dp = i^.i_defensePower
-    game <- get
-    notify (game^.player.location) $ "You equip the " ++ i^.i_name
+    loc <- use $ player.location
+    notify loc $ "You equip the " ++ i^.i_name
     if ap >= dp
        then player.weapon .= Just i
        else player.armor .= Just i
 
 unequip :: Item -> GameState ()
 unequip i = do
-    game <- get
-    let mweap = game^.player.weapon
-        marm = game^.player.armor
-        isWeap = isJust mweap && fromJust mweap == i
+    mweap <- use $ player.weapon
+    marm <- use $ player.armor
+    let isWeap = isJust mweap && fromJust mweap == i
         isArm = isJust marm && fromJust marm == i
     when isWeap $ player.weapon .= Nothing
     when isArm $ player.armor .= Nothing

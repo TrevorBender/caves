@@ -26,8 +26,8 @@ emptyUis game = null $ game^.uis
 
 tick :: GameState ()
 tick = do
-    game <- get
-    forM_ (M.elems $ game^.creatures) creatureTick
+    cs <- use creatures
+    forM_ (M.elems cs) creatureTick
     updateVisibleTiles
 
 gameLoop :: Game -> IO ()

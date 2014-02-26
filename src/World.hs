@@ -9,10 +9,11 @@ import Control.Monad.State.Strict (State, get, put, execState)
 import Data.Array as A
 import Data.Maybe (isNothing, isJust)
 import Data.Map.Strict as M (elems, lookup, delete, (!), member)
-import System.Random (getStdGen, randomR, randomRs, StdGen)
+import System.Random (randomRs, StdGen)
 
 import Game
 import Line (line)
+import Random as R (randomR)
 
 floor = Tile { _kind = Floor , _glyph = '.' }
 wall = Tile { _kind = Wall , _glyph = '#' }
@@ -32,6 +33,11 @@ canSee game loc@(x,y,z) c =
         notBlocked = (<= 1) $ length $ dropWhile (seeThrough game . threeD2D) ln
     in sameDepth && inVision && notBlocked
 
+canSee' :: Coord -> Creature -> GameState Bool
+canSee' loc c = do
+    game <- get
+    return $ canSee game loc c
+
 updateVisibleTiles :: GameState ()
 updateVisibleTiles = do
     game <- get
@@ -46,6 +52,11 @@ visibleTileAt game loc = if inBounds loc then (game^.visibleWorld) A.! (reverseC
 seeThrough :: Game -> Coord -> Bool
 seeThrough game = (`elem` [Floor, StairsUp, StairsDown]) . (^.kind) . tileAt game
 
+tileAt' :: Coord -> GameState Tile
+tileAt' loc = do
+    w <- use world
+    return $ tileAtWorld w loc
+
 tileAt :: Game -> Coord -> Tile
 tileAt game = tileAtWorld (game^.world)
 
@@ -54,26 +65,21 @@ tileAtWorld world loc = if inBounds loc then world A.! (reverseCoord loc) else o
 
 creatureAt :: Coord -> GameState (Maybe Creature)
 creatureAt loc = do
-    game <- get
-    return $ case filter (\c -> c^.location == loc) (M.elems (game^.creatures)) of
+    cs <- use $ creatures .to M.elems
+    return $ case filter (\c -> c^.location == loc) cs of
          [] -> Nothing
          c:_ -> Just c
 
 findEmptyLocation :: Int -> GameState Coord
 findEmptyLocation depth = do
-    game <- get
-    let g = game^.stdGen
-        (x, g') = randomR (0, gameWidth-1) g
-        (y, g'') = randomR (0, gameHeight-1) g'
-        loc = (fromIntegral x, fromIntegral y, depth)
-    stdGen .= g''
+    x <- randomR (0, gameWidth-1)
+    y <- randomR (0, gameHeight-1)
+    let loc = (x, y, depth)
     empty <- isEmpty loc
     if empty
        then return loc
        else findEmptyLocation depth
 
-int2Tile :: Int -> Tile
-int2Tile n = [floor, wall] !! n
 
 gameBounds :: (Coord, Coord)
 gameBounds = ((0,0,0), (gameDepth-1, gameHeight-1, gameWidth-1))
@@ -81,16 +87,18 @@ gameBounds = ((0,0,0), (gameDepth-1, gameHeight-1, gameWidth-1))
 list2GameWorld :: [Tile] -> GameWorld
 list2GameWorld = listArray gameBounds
 
-randomWorld :: Int -> Int -> Int -> StdGen -> GameWorld
-randomWorld width height depth g = list2GameWorld tiles
-    where rs = take (width * height * depth) (randomRs (0, 1) g)
-          tiles = map int2Tile rs
+randomWorld :: GameState GameWorld
+randomWorld = do
+    g <- use stdGen
+    let rs = take (gameWidth * gameHeight * gameDepth) (randomRs (0, 1) g)
+        tiles = map int2Tile rs
+    return $ list2GameWorld tiles
+
+    where int2Tile :: Int -> Tile
+          int2Tile n = [floor, wall] !! n
 
 createWorld :: GameState ()
-createWorld = do
-    game <- get
-    let g = game^.stdGen
-    world .= randomWorld gameWidth gameHeight gameDepth g
+createWorld = (world .=) =<< randomWorld
 
 smoothWorld :: GameState ()
 smoothWorld = do
@@ -108,8 +116,8 @@ smoothWorld = do
 
 isFloor :: Coord -> GameState Bool
 isFloor loc = do
-    game <- get
-    return $ (tileAt game loc) == floor
+    tile <- tileAt' loc
+    return $ tile == floor
 
 isCreature :: Coord -> GameState Bool
 isCreature loc = do
@@ -117,14 +125,10 @@ isCreature loc = do
     return $ isJust creature
 
 itemAt :: Coord -> GameState Item
-itemAt loc = do
-    game <- get
-    return $ (game^.items) M.! loc
+itemAt loc = use $ items .to (M.! loc)
 
 isItem :: Coord -> GameState Bool
-isItem loc = do
-    game <- get
-    return $ member loc (game^.items)
+isItem loc = use $ items .to (member loc)
 
 isEmpty :: Coord -> GameState Bool
 isEmpty loc = do

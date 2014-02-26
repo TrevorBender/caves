@@ -14,7 +14,7 @@ import Data.Maybe (isJust, fromJust)
 import UI.HSCurses.Curses as C (Key(..), getCh)
 
 import Game
-import Creature (move, playerPickup, playerDropItem, equip)
+import Creature (move, playerPickup, playerDropItem, equip, eat)
 import World (creatureAt, isFloor, floor, tileAt', stairsDown, stairsUp)
 
 getInput :: IO Key
@@ -47,7 +47,8 @@ processInputScreen Play key =
          '<' -> climb Up
          ',' -> playerPickup
          'd' -> pushScreen DropItem
-         'e' -> pushScreen EquipItem
+         'x' -> pushScreen EquipItem
+         'e' -> pushScreen EatItem
          _   -> updated .= False
 
 processInputScreen DropItem key = inventoryScreen key $ \ix -> playerDropItem ix
@@ -55,6 +56,10 @@ processInputScreen DropItem key = inventoryScreen key $ \ix -> playerDropItem ix
 processInputScreen EquipItem key = inventoryScreen key $ \ix -> do
     item <- use $ player.inventory. to (!! ix)
     equip item
+
+processInputScreen EatItem key = inventoryScreen key $ \ix -> do
+    item <- use $ player.inventory .to (!! ix)
+    eat item
 
 inventoryScreen :: Char -> (Int -> GameState()) -> GameState ()
 inventoryScreen key action = do

@@ -9,6 +9,7 @@ module Creature
     , createPlayer
     , createFungus
     , createBat
+    , eat
     ) where
 
 import Prelude hiding (floor)
@@ -16,6 +17,7 @@ import Prelude hiding (floor)
 import Control.Lens
 import Control.Monad (when, unless)
 import Control.Monad.State.Strict (execState, get, runState)
+import Data.List as L (delete)
 import Data.Map.Strict as M
 import Data.Maybe (isJust, fromJust)
 import Data.Array as A
@@ -49,6 +51,8 @@ creatureDefaults = Creature { _location = (0,0,0)
                             , _maxInv = 0
                             , _weapon = Nothing
                             , _armor = Nothing
+                            , _food = 0
+                            , _maxFood = 0
                             }
 
 createPlayer :: Creature
@@ -63,6 +67,8 @@ createPlayer = creatureDefaults
     , _hp = 40
     , _maxHp = 40
     , _maxInv = 20
+    , _maxFood = 1000
+    , _food = div 1000 3 * 2
     }
 
 creature :: Creature -> Int -> GameState Creature
@@ -120,7 +126,9 @@ creatureTick' Bat bat = do
     let offset = offsetDir dir
     move bat offset
 
-creatureTick' _ _ = return ()
+creatureTick' Player p = minusFood 1
+
+{-creatureTick' _ _ = return ()-}
 
 action :: Creature -> String -> GameState String
 action c action = do
@@ -166,7 +174,7 @@ die c = do
     isPlayer <- use $ player .to (c==)
     if isPlayer then lose
     else do
-        creatures %= delete (c^.c_id)
+        creatures %= M.delete (c^.c_id)
         let msg name = "The " ++ name ++ " dies."
         notify (c^.location) $ msg (c^.name)
 
@@ -197,9 +205,14 @@ move creature offset = do
 
 dig :: Coord -> GameState ()
 dig loc = do
-    loc <- use $ player.location
     world %= (//[(reverseCoord loc, floor)])
+    minusFood 10
     notify loc $ "You dig."
+
+minusFood :: Int -> GameState ()
+minusFood val = do
+    f <- player.food <-= val
+    if f < 1 then lose else return ()
 
 canMove :: Coord -> GameState Bool
 canMove loc = do
@@ -251,3 +264,10 @@ unequip i = do
         isArm = isJust marm && fromJust marm == i
     when isWeap $ player.weapon .= Nothing
     when isArm $ player.armor .= Nothing
+
+eat :: Item -> GameState ()
+eat i = do
+    max <- use $ player.maxFood
+    player.food += (i^.i_foodValue)
+    player.food %= \f -> if f > max then max else f
+    player.inventory %= L.delete i

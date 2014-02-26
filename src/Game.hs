@@ -20,7 +20,7 @@ gameDepth = 5
 
 debugOn = False
 
-data Screen = Start | Win | Lose | Play | DropItem | EquipItem
+data Screen = Start | Win | Lose | Play | DropItem | EquipItem | EatItem
 
 type Coord = (Int, Int, Int)
 
@@ -54,6 +54,7 @@ data Item = Item
     , _i_location :: Coord
     , _i_attackPower :: Int
     , _i_defensePower :: Int
+    , _i_foodValue :: Int
     }
 makeLenses ''Item
 
@@ -77,6 +78,8 @@ data Creature = Creature
     , _maxInv :: Int
     , _weapon :: Maybe Item
     , _armor :: Maybe Item
+    , _food :: Int
+    , _maxFood :: Int
     }
 makeLenses ''Creature
 
@@ -210,10 +213,12 @@ dropScreen :: GameState ()
 dropScreen = uis %= init
 
 lose :: GameState ()
-lose = pushScreen Lose
+lose = updated .= False >> pushScreen Lose
 
 quit :: GameState ()
-quit = uis .= []
+quit = do
+    uis .= []
+    updated .= False
 
 win :: GameState ()
 win = pushScreen Win

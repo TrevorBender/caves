@@ -87,6 +87,7 @@ defaultItem = Item { _i_location = (0,0,0)
                    , _i_glyph = 'X'
                    , _i_attackPower = 0
                    , _i_defensePower = 0
+                   , _i_foodValue = 0
                    }
 
 createRock :: Int -> GameState Item
@@ -149,6 +150,13 @@ createPlatemail = item defaultItem
     , _i_defensePower = 4
     }
 
+createBread :: Int -> GameState Item
+createBread = item defaultItem
+    { _i_name = "bread"
+    , _i_glyph = '8'
+    , _i_foodValue = 200
+    }
+
 randomWeapon :: Int -> GameState Item
 randomWeapon depth = do
     cf <- randomL [ createDagger, createSword, createStaff ]
@@ -164,6 +172,7 @@ createItems = do
     createItem createRock (\_ -> div (gameWidth * gameHeight) 50)
     createItem randomWeapon (\_ -> 2)
     createItem randomArmor (\_ -> 2)
+    createItem createBread (\_ -> 2)
 
     victoryItem <- createVictoryItem
     items %= M.insert (victoryItem^.i_location) victoryItem

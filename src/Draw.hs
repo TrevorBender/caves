@@ -64,6 +64,8 @@ drawScreen DropItem = drawInventoryScreen "Drop Item" $ \_ -> True
 
 drawScreen EquipItem = drawInventoryScreen "Equip Item" $ \i -> i^.i_attackPower > 0 || i^.i_defensePower > 0
 
+drawScreen EatItem = drawInventoryScreen "Eat Item" $ \i -> i^.i_foodValue /= 0
+
 drawInventoryScreen :: String -> (Item -> Bool) -> GameIOState ()
 drawInventoryScreen str filt = do
     drawStr 5 5 str
@@ -114,7 +116,16 @@ drawHud = do
         def = show $ creatureDefense p
     resetColor
     drawStr gameHeight 0 $
-        "loc=" ++ loc ++ " hp=[" ++ health ++ "] inv=[" ++ inv ++ "] ap=" ++ ap ++ " def=" ++ def
+        "loc=" ++ loc ++ " hp=[" ++ health ++ "] inv=[" ++ inv ++ "] ap=" ++ ap ++ " def=" ++ def ++ " " ++ hunger p
+
+    where hunger p =
+              let f  = fromIntegral $ p^.food
+                  mf = fromIntegral $ p^.maxFood
+              in (show f) ++ if      f < mf * 0.1 then "Starving"
+                 else if f < mf * 0.2 then "Hungry"
+                 else if f > mf * 0.9 then "Stuffed"
+                 else if f > mf * 0.8 then "Full"
+                 else ""
 
 getOffsets :: GameIOState (Int, Int)
 getOffsets = do

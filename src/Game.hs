@@ -32,6 +32,7 @@ data StyleType = DefaultStyle
                | VictoryItemStyle
                | SwordStyle
                | StaffStyle
+               | ZombieStyle
                deriving (Eq, Ord)
 
 styleMap :: Map StyleType Style
@@ -44,6 +45,7 @@ styleMap = M.fromAscList
          , (VictoryItemStyle, AttributeStyle [Bold] YellowF DefaultB)
          , (SwordStyle, AttributeStyle [] CyanF DefaultB)
          , (StaffStyle, AttributeStyle [] BrownF DefaultB)
+         , (ZombieStyle, AttributeStyle [Bold] RedF DefaultB)
          ]
 
 data Item = Item
@@ -61,7 +63,7 @@ makeLenses ''Item
 instance Eq Item where
     (==) a b = a^.i_id == b^.i_id
 
-data CreatureKind = Player | Fungus | Bat
+data CreatureKind = Player | Fungus | Bat | Zombie
 data Creature = Creature
     { _location :: Coord
     , _c_glyph :: Char

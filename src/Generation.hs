@@ -20,7 +20,7 @@ import UI.HSCurses.CursesHelper
 import Game
 import World
 import Random
-import Creature (createPlayer, createFungus, createBat)
+import Creature (createPlayer, createFungus, createBat, createZombie)
 
 fungiPerLevel = 5
 batsPerLevel = 5
@@ -29,6 +29,7 @@ populateGame :: GameState ()
 populateGame = do
     populateCreature createFungus (\_ -> fungiPerLevel)
     populateCreature createBat (\_ -> batsPerLevel)
+    populateCreature createZombie id
 
     where populateCreature :: (Int -> GameState Creature) -> (Int -> Int) -> GameState ()
           populateCreature createCreature cPerLevel = do
@@ -172,7 +173,7 @@ createItems = do
     createItem createRock (\_ -> div (gameWidth * gameHeight) 50)
     createItem randomWeapon (\_ -> 2)
     createItem randomArmor (\_ -> 2)
-    createItem createBread (\_ -> 2)
+    createItem createBread (\_ -> 1)
 
     victoryItem <- createVictoryItem
     items %= M.insert (victoryItem^.i_location) victoryItem

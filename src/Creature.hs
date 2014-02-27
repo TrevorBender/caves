@@ -9,6 +9,7 @@ module Creature
     , createPlayer
     , createFungus
     , createBat
+    , createZombie
     , eat
     ) where
 
@@ -30,6 +31,7 @@ import World ( isFloor, isCreature
              , tileAt', itemAt
              , removeItemFromWorld
              , findEmptyLocation
+             , canSee'
              )
 import Line (line)
 
@@ -100,6 +102,18 @@ createBat = creature creatureDefaults
         , _maxHp = 5
         }
 
+createZombie :: Int -> GameState Creature
+createZombie = creature creatureDefaults
+    { _c_kind = Zombie
+    , _c_glyph = 'z'
+    , _c_style = ZombieStyle
+    , _name = "zombie"
+    , _attack_power = 15
+    , _defense = 5
+    , _hp = 15
+    , _maxHp = 15
+    }
+
 creatureTick :: Creature -> GameState ()
 creatureTick c = creatureTick' (c^.c_kind) c
 
@@ -128,7 +142,14 @@ creatureTick' Bat bat = do
 
 creatureTick' Player p = minusFood 1
 
-{-creatureTick' _ _ = return ()-}
+creatureTick' Zombie z = do
+    pl@(px,py,pz) <- use $ player.location
+    isVisible <- canSee' pl z
+    when isVisible $ do
+        let (x,y,_) = z^.location
+            ln = line (x,y) (px, py)
+            (x', y') = ln !! 1
+        moveAbs z (x',y',pz)
 
 action :: Creature -> String -> GameState String
 action c action = do
@@ -161,13 +182,14 @@ creatureDefense c = c^.defense + itemDefensePower c
 attack :: Creature -> Creature -> GameState()
 attack creature other = get >>= \game -> do
     let maxAttack = creatureAttack  creature - creatureDefense other
-    attackValue <- randomR (1, maxAttack)
-    let other' = (hp -~ attackValue) other
-    attackStr <- action creature "attack"
-    targetStr <- target other
-    notify (creature^.location) $ attackStr ++ " " ++ targetStr ++ " for " ++ show attackValue ++ " damage."
-    if other'^.hp < 1 then die other'
-                      else updateCreature other'
+    when (maxAttack > 0) $ do
+        attackValue <- randomR (1, maxAttack)
+        let other' = (hp -~ attackValue) other
+        attackStr <- action creature "attack"
+        targetStr <- target other
+        notify (creature^.location) $ attackStr ++ " " ++ targetStr ++ " for " ++ show attackValue ++ " damage."
+        if other'^.hp < 1 then die other'
+                          else updateCreature other'
 
 die :: Creature -> GameState ()
 die c = do
@@ -184,13 +206,17 @@ updateCreature c = creatures %= insert (c^.c_id) c
 -- TODO refactor deep nesting
 move :: Creature -> Coord -> GameState ()
 move creature offset = do
-    p <- use player
     let origin = creature^.location
         move origin = origin <+> offset
         loc = move origin
+    moveAbs creature loc
+
+moveAbs :: Creature -> Coord -> GameState ()
+moveAbs creature loc = do
     when (inBounds loc) $ do
         mc <- creatureAt loc
         canMove <- canMove loc
+        p <- use player
         case mc of
              Just other -> attack creature other
              Nothing ->
@@ -202,6 +228,7 @@ move creature offset = do
                        then creatures %= (adjust (location .~ loc) (creature^.c_id))
                        else return ()
     return ()
+
 
 dig :: Coord -> GameState ()
 dig loc = do

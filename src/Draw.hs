@@ -114,9 +114,11 @@ drawHud = do
         inv = show (length (p^.inventory)) ++ "/" ++ show (p^.maxInv)
         ap = show $ creatureAttack p
         def = show $ creatureDefense p
+        xpStr = show $ p^.xp 
+        levelStr = show $ p^.level
     resetColor
     drawStr gameHeight 0 $
-        "loc=" ++ loc ++ " hp=[" ++ health ++ "] inv=[" ++ inv ++ "] ap=" ++ ap ++ " def=" ++ def ++ " " ++ hunger p
+        "loc=" ++ loc ++ " hp=[" ++ health ++ "] inv=[" ++ inv ++ "] ap=" ++ ap ++ " def=" ++ def ++ " xp=" ++ xpStr ++ " level=" ++ levelStr ++ " " ++ hunger p
 
     where hunger p =
               let f  = fromIntegral $ p^.food

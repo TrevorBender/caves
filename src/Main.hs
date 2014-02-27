@@ -26,16 +26,18 @@ emptyUis game = null $ game^.uis
 
 tick :: GameState ()
 tick = do
-    cs <- use creatures
-    forM_ (M.elems cs) creatureTick
+    cs <- use $ creatures .to M.elems
+    forM_ cs creatureTick
     updateVisibleTiles
+
+nehw = flip when
 
 gameLoop :: Game -> IO ()
 gameLoop game = do
     erase
     game' <- execStateT drawGame game
     ch <- getInput
-    let game'' = (execState $ processInput ch >> gameChanged >>= \gc -> when gc tick) game'
+    let game'' = (execState $ processInput ch >> gameChanged >>= nehw tick) game'
     if emptyUis game''
        then return ()
        else gameLoop game''

@@ -63,7 +63,7 @@ makeLenses ''Item
 instance Eq Item where
     (==) a b = a^.i_id == b^.i_id
 
-data CreatureKind = Player | Fungus | Bat | Zombie
+data CreatureKind = Player | Fungus | Bat | Zombie deriving (Eq)
 data Creature = Creature
     { _location :: Coord
     , _c_glyph :: Char
@@ -71,22 +71,34 @@ data Creature = Creature
     , _c_id :: Int
     , _c_kind :: CreatureKind
     , _name :: String
+
     , _attack_power :: Int
     , _defense :: Int
+
     , _hp :: Int
     , _maxHp :: Int
+
     , _visionRadius :: Int
+
     , _inventory :: [Item]
     , _maxInv :: Int
+
     , _weapon :: Maybe Item
     , _armor :: Maybe Item
+
     , _food :: Int
     , _maxFood :: Int
+
+    , _xp :: Int
+    , _level :: Int
+    , _levelUpgrades :: Int
     }
 makeLenses ''Creature
 
 instance Eq Creature where
     (==) a b = a^.c_id == b^.c_id
+
+type CreatureState = State Creature
 
 data TileKind = Floor | Wall | StairsUp | StairsDown | Unknown deriving (Eq)
 

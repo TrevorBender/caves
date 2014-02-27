@@ -13,7 +13,7 @@ module Creature
     , eat
     ) where
 
-import Prelude hiding (floor)
+import Prelude as P hiding (floor)
 
 import Control.Lens
 import Control.Monad (when, unless)
@@ -55,6 +55,9 @@ creatureDefaults = Creature { _location = (0,0,0)
                             , _armor = Nothing
                             , _food = 0
                             , _maxFood = 0
+                            , _xp = 0
+                            , _level = 1
+                            , _levelUpgrades = 0
                             }
 
 createPlayer :: Creature
@@ -112,10 +115,13 @@ createZombie = creature creatureDefaults
     , _defense = 5
     , _hp = 15
     , _maxHp = 15
+    , _visionRadius = 15
     }
 
 creatureTick :: Creature -> GameState ()
-creatureTick c = creatureTick' (c^.c_kind) c
+creatureTick c = do
+    autoLevelUp c
+    creatureTick' (c^.c_kind) c
 
 creatureTick' :: CreatureKind -> Creature -> GameState ()
 
@@ -148,6 +154,38 @@ creatureTick' Zombie z = do
                 (x', y') = ln !! 1
             moveAbs z (x',y',pz)
     if isVisible then follow else wander z
+
+upgradeMaxHp = do
+    hp += 10
+    maxHp += 10
+upgradeAttack = attack_power += 2
+upgradeDefense = defense += 2
+upgradeVision = visionRadius += 2
+
+upgrades = [ (upgradeMaxHp, "look healthier")
+           , (upgradeAttack, "look stronger")
+           , (upgradeDefense, "look tougher")
+           , (upgradeVision, "look more aware")
+           ]
+
+gainHealth = do
+    mh <- use maxHp
+    let mhf = fromIntegral mh :: Float
+        hu = mhf * 0.2
+    h <- hp <+= P.round hu
+    when (h > mh) $ hp .= mh
+
+autoLevelUp :: Creature -> GameState ()
+autoLevelUp c = do
+    let lu = c^.levelUpgrades
+    when (lu > 0) $ do
+        (upgrade, str) <- randomL upgrades
+        let autoUp = do
+                gainHealth
+                upgrade
+                levelUpgrades -= 1
+        action c str >>= notify (c^.location)
+        updateCreature $ execState autoUp c
 
 wander :: Creature -> GameState ()
 wander c = do
@@ -192,7 +230,11 @@ attack creature other = get >>= \game -> do
         attackStr <- action creature "attack"
         targetStr <- target other
         notify (creature^.location) $ attackStr ++ " " ++ targetStr ++ " for " ++ show attackValue ++ " damage."
-        if other'^.hp < 1 then die other'
+        let dieAction = do
+                die other'
+                let xpGain = xpOf other' - 2 * (creature^.level)
+                when (xpGain > 0) $ modifyXP xpGain creature
+        if other'^.hp < 1 then dieAction
                           else updateCreature other'
 
 die :: Creature -> GameState ()
@@ -302,3 +344,25 @@ eat i = do
     player.food += (i^.i_foodValue)
     player.food %= \f -> if f > max then max else f
     player.inventory %= L.delete i
+
+modifyXP :: Int -> Creature -> GameState ()
+modifyXP val c = updateCreature $ execState (modifyXp' val) c
+
+    where modifyXp' val = do
+              x <- xp <+= val
+              l <- use $ level .to fromIntegral
+              when (fromIntegral x > l ** 1.5 * 20.0) levelUp
+
+          levelUp = do
+              level += 1
+              levelUpgrades += 1
+
+isPlayer :: Creature -> Bool
+isPlayer c = (c^.c_kind) == Player
+
+xpOf :: Creature -> Int
+xpOf c =
+    let mhp = c^.maxHp
+        av  = creatureAttack c
+        dv  = creatureDefense c
+        in mhp + av + dv

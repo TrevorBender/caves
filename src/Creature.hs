@@ -135,21 +135,25 @@ creatureTick' Fungus c = do
                 let fungus' = (location .~ loc') fungus
                 creatures %= (insert (fungus^.c_id) fungus')
 
-creatureTick' Bat bat = do
-    dir <- randomL [N,E,S,W,NE,SE,SW,NW]
-    let offset = offsetDir dir
-    move bat offset
+creatureTick' Bat bat = wander bat
 
 creatureTick' Player p = minusFood 1
 
 creatureTick' Zombie z = do
     pl@(px,py,pz) <- use $ player.location
     isVisible <- canSee' pl z
-    when isVisible $ do
-        let (x,y,_) = z^.location
-            ln = line (x,y) (px, py)
-            (x', y') = ln !! 1
-        moveAbs z (x',y',pz)
+    let follow = do
+            let (x,y,_) = z^.location
+                ln = line (x,y) (px, py)
+                (x', y') = ln !! 1
+            moveAbs z (x',y',pz)
+    if isVisible then follow else wander z
+
+wander :: Creature -> GameState ()
+wander c = do
+    dir <- randomL [N,E,S,W,NE,SE,SW,NW]
+    let offset = offsetDir dir
+    move c offset
 
 action :: Creature -> String -> GameState String
 action c action = do

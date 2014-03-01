@@ -68,7 +68,7 @@ drawScreen EatItem = drawInventoryScreen "Eat Item" $ \i -> i^.i_foodValue /= 0
 
 drawInventoryScreen :: String -> (Item -> Bool) -> GameIOState ()
 drawInventoryScreen str filt = do
-    drawStr 5 5 str
+    drawStr 5 5  str
     drawStr 6 5 "                "
     p <- use player
     drawBlock 7 5 $ itemStrings filt [p^.weapon, p^.armor] $ p^.inventory
@@ -109,21 +109,21 @@ drawMessages = do
 drawHud :: GameIOState ()
 drawHud = do
     p <- use player
-    let loc = show $ p^.location
+    let loc = p^.location
+        (_,_,depth) = loc
         health = show (p^.hp) ++ "/" ++ show (p^.maxHp)
         inv = show (length (p^.inventory)) ++ "/" ++ show (p^.maxInv)
         ap = show $ creatureAttack p
         def = show $ creatureDefense p
-        xpStr = show $ p^.xp 
         levelStr = show $ p^.level
     resetColor
     drawStr gameHeight 0 $
-        "loc=" ++ loc ++ " hp=[" ++ health ++ "] inv=[" ++ inv ++ "] ap=" ++ ap ++ " def=" ++ def ++ " xp=" ++ xpStr ++ " level=" ++ levelStr ++ " " ++ hunger p
+        "depth=" ++ show (depth + 1) ++ " hp=[" ++ health ++ "] inv=[" ++ inv ++ "] ap=" ++ ap ++ " def=" ++ def ++ " level=" ++ levelStr ++ " " ++ hunger p
 
     where hunger p =
               let f  = fromIntegral $ p^.food
                   mf = fromIntegral $ p^.maxFood
-              in (show f) ++ if      f < mf * 0.1 then "Starving"
+              in if      f < mf * 0.1 then "Starving"
                  else if f < mf * 0.2 then "Hungry"
                  else if f > mf * 0.9 then "Stuffed"
                  else if f > mf * 0.8 then "Full"

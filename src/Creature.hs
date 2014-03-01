@@ -125,7 +125,25 @@ creatureTick c = do
 
 creatureTick' :: CreatureKind -> Creature -> GameState ()
 
-creatureTick' Fungus c = do
+creatureTick' Fungus c = duplicate c
+
+creatureTick' Bat bat = wander bat
+
+creatureTick' Player p = minusFood 1
+
+creatureTick' Zombie z = do
+    pl@(px,py,pz) <- use $ player.location
+    playerVisible <- canSee' pl z
+    let hunt = do
+            let (x,y,_) = z^.location
+                ln = line (x,y) (px, py)
+                (x', y') = ln !! 1
+            moveAbs z (x',y',pz)
+    if playerVisible then hunt else wander z
+
+
+duplicate :: Creature -> GameState ()
+duplicate c = do
     let loc@(_,_,depth) = c^.location
     r <- randomR (0,99)
     when (r == 99) $ do
@@ -137,23 +155,10 @@ creatureTick' Fungus c = do
             isCreature <- isCreature loc'
             isItem <- isItem loc'
             when (isFloor && not isCreature && not isItem) $ do
-                fungus <- createFungus depth
-                let fungus' = (location .~ loc') fungus
-                creatures %= (insert (fungus^.c_id) fungus')
+                id <- nextInt
+                let child = c { _c_id = id , _location = loc' }
+                creatures %= (insert (child^.c_id) child)
 
-creatureTick' Bat bat = wander bat
-
-creatureTick' Player p = minusFood 1
-
-creatureTick' Zombie z = do
-    pl@(px,py,pz) <- use $ player.location
-    isVisible <- canSee' pl z
-    let follow = do
-            let (x,y,_) = z^.location
-                ln = line (x,y) (px, py)
-                (x', y') = ln !! 1
-            moveAbs z (x',y',pz)
-    if isVisible then follow else wander z
 
 upgradeMaxHp = do
     hp += 10
@@ -171,7 +176,7 @@ upgrades = [ (upgradeMaxHp, "look healthier")
 gainHealth = do
     mh <- use maxHp
     let mhf = fromIntegral mh :: Float
-        hu = mhf * 0.2
+        hu = mhf * 0.1
     h <- hp <+= P.round hu
     when (h > mh) $ hp .= mh
 
@@ -242,9 +247,32 @@ die c = do
     isPlayer <- use $ player .to (c==)
     if isPlayer then lose
     else do
+        r <- randomR (1, 100)
+        when (r > 50) $ dropCorpse c
         creatures %= M.delete (c^.c_id)
         let msg name = "The " ++ name ++ " dies."
         notify (c^.location) $ msg (c^.name)
+
+foodValue :: Creature -> Int
+foodValue c =
+    let afv = (c^.level) * 100 + (c^.attack_power) * 10 + (c^.defense) * 10
+        fv = if (c^.c_kind) == Zombie then -afv else afv
+        in fv
+
+dropCorpse :: Creature -> GameState ()
+dropCorpse c = do
+    id <- nextInt
+    let fv = foodValue c
+        corpse = Item { _i_name = (c^.name) ++ " corpse"
+                      , _i_glyph = 'c'
+                      , _i_style = c^.c_style
+                      , _i_id = id
+                      , _i_location = c^.location
+                      , _i_attackPower = 0
+                      , _i_defensePower = 0
+                      , _i_foodValue = fv
+                      }
+    items %= insert (corpse^.i_location) corpse
 
 updateCreature :: Creature -> GameState ()
 updateCreature c = creatures %= insert (c^.c_id) c

@@ -7,14 +7,14 @@ import Prelude hiding (floor)
 
 import Control.Lens
 import Control.Monad (when)
-import Control.Monad.State.Strict (get)
+import Control.Monad.State.Strict (get, execState)
 import Data.Array
 import Data.Map.Strict as M (adjust)
 import Data.Maybe (isJust, fromJust)
 import UI.HSCurses.Curses as C (Key(..), getCh)
 
 import Game
-import Creature (move, playerPickup, playerDropItem, equip, eat)
+import Creature (move, playerPickup, playerDropItem, equip, eat, levelUpActions)
 import World (creatureAt, isFloor, floor, tileAt', stairsDown, stairsUp)
 
 getInput :: IO Key
@@ -60,6 +60,11 @@ processInputScreen EquipItem key = inventoryScreen key $ \ix -> do
 processInputScreen EatItem key = inventoryScreen key $ \ix -> do
     item <- use $ player.inventory .to (!! ix)
     eat item
+
+processInputScreen ChooseLevelUp key =
+    case lookup key levelUpActions of
+         Just a -> player %= execState a >> dropScreen
+         _ -> return ()
 
 inventoryScreen :: Char -> (Int -> GameState()) -> GameState ()
 inventoryScreen key action = do

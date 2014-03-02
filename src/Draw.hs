@@ -17,7 +17,7 @@ import UI.HSCurses.CursesHelper
 
 import Game
 import World (tileAt, unknownTile, canSee)
-import Creature (creatureAttack, creatureDefense)
+import Creature (creatureAttack, creatureDefense, levelUpStrings)
 
 type GameIOState = StateT Game IO
 
@@ -65,6 +65,11 @@ drawScreen DropItem = drawInventoryScreen "Drop Item" $ \_ -> True
 drawScreen EquipItem = drawInventoryScreen "Equip Item" $ \i -> i^.i_attackPower > 0 || i^.i_defensePower > 0
 
 drawScreen EatItem = drawInventoryScreen "Eat Item" $ \i -> i^.i_foodValue /= 0
+
+drawScreen ChooseLevelUp = do
+    drawStr 5 5 "Choose Level Up"
+    drawStr 6 5 "               "
+    drawBlock 7 5 levelUpStrings
 
 drawInventoryScreen :: String -> (Item -> Bool) -> GameIOState ()
 drawInventoryScreen str filt = do

@@ -20,7 +20,7 @@ gameDepth = 5
 
 debugOn = False
 
-data Screen = Start | Win | Lose | Play | DropItem | EquipItem | EatItem
+data Screen = Start | Win | Lose | Play | DropItem | EquipItem | EatItem | ChooseLevelUp
 
 type Coord = (Int, Int, Int)
 

@@ -11,6 +11,8 @@ module Creature
     , createBat
     , createZombie
     , eat
+    , levelUpStrings
+    , levelUpActions
     ) where
 
 import Prelude as P hiding (floor)
@@ -119,17 +121,22 @@ createZombie = creature creatureDefaults
     }
 
 creatureTick :: Creature -> GameState ()
-creatureTick c = do
-    autoLevelUp c
-    creatureTick' (c^.c_kind) c
+creatureTick c = creatureTick' (c^.c_kind) c
 
 creatureTick' :: CreatureKind -> Creature -> GameState ()
 
-creatureTick' Fungus c = duplicate c
+creatureTick' Fungus c = do
+    r <- randomR (0,99)
+    when (r == 99) $ duplicate c
 
-creatureTick' Bat bat = wander bat
+creatureTick' Bat bat = do
+    wander bat
+    autoLevelUp bat
 
-creatureTick' Player p = minusFood 1
+creatureTick' Player p = do
+    minusFood 1
+    let ups = p^.levelUpgrades
+    when (ups > 0) $ pushScreen ChooseLevelUp
 
 creatureTick' Zombie z = do
     pl@(px,py,pz) <- use $ player.location
@@ -140,32 +147,38 @@ creatureTick' Zombie z = do
                 (x', y') = ln !! 1
             moveAbs z (x',y',pz)
     if playerVisible then hunt else wander z
+    autoLevelUp z
 
 
 duplicate :: Creature -> GameState ()
 duplicate c = do
     let loc@(_,_,depth) = c^.location
-    r <- randomR (0,99)
-    when (r == 99) $ do
-        dir <- randomL [N,E,S,W,NE,SE,SW,NW]
-        let offset = offsetDir dir
-            loc' = offset <+> loc
-        when (inBounds loc') $ do
-            isFloor <- isFloor loc'
-            isCreature <- isCreature loc'
-            isItem <- isItem loc'
-            when (isFloor && not isCreature && not isItem) $ do
-                id <- nextInt
-                let child = c { _c_id = id , _location = loc' }
-                creatures %= (insert (child^.c_id) child)
+    dir <- randomL [N,E,S,W,NE,SE,SW,NW]
+    let offset = offsetDir dir
+        loc' = offset <+> loc
+    when (inBounds loc') $ do
+        isFloor <- isFloor loc'
+        isCreature <- isCreature loc'
+        isItem <- isItem loc'
+        when (isFloor && not isCreature && not isItem) $ do
+            id <- nextInt
+            let child = c { _c_id = id , _location = loc' }
+            creatures %= (insert (child^.c_id) child)
 
 
 upgradeMaxHp = do
     hp += 10
     maxHp += 10
-upgradeAttack = attack_power += 2
-upgradeDefense = defense += 2
-upgradeVision = visionRadius += 2
+    levelUpgrades -= 1
+upgradeAttack = do
+    attack_power += 2
+    levelUpgrades -= 1
+upgradeDefense = do
+    defense += 2
+    levelUpgrades -= 1
+upgradeVision = do
+    visionRadius += 2
+    levelUpgrades -= 1
 
 upgrades = [ (upgradeMaxHp, "look healthier")
            , (upgradeAttack, "look stronger")
@@ -180,6 +193,27 @@ gainHealth = do
     h <- hp <+= P.round hu
     when (h > mh) $ hp .= mh
 
+data LevelUpOption = LevelUpOption
+    { levelUpDescription :: String
+    , levelUpAction :: CreatureState ()
+    }
+
+increaseHitPoints = LevelUpOption "Increased hit points" upgradeMaxHp
+increaseAttackPower = LevelUpOption "Increased attack power" upgradeAttack
+increaseToughness = LevelUpOption "Increase toughness" upgradeDefense
+increaseVision = LevelUpOption "Increase vision" upgradeVision
+levelUpOptions = [ increaseHitPoints
+                 , increaseAttackPower
+                 , increaseToughness
+                 , increaseVision
+                 ]
+
+levelUpStrings :: [String]
+levelUpStrings = P.map (\(c, s) -> c:' ':s) . zip ['a'..] . P.map levelUpDescription $ levelUpOptions
+
+levelUpActions :: [(Char, CreatureState ())]
+levelUpActions = zip ['a'..] . P.map levelUpAction $ levelUpOptions
+
 autoLevelUp :: Creature -> GameState ()
 autoLevelUp c = do
     let lu = c^.levelUpgrades
@@ -188,7 +222,6 @@ autoLevelUp c = do
         let autoUp = do
                 gainHealth
                 upgrade
-                levelUpgrades -= 1
         action c str >>= notify (c^.location)
         updateCreature $ execState autoUp c
 

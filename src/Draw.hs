@@ -79,11 +79,14 @@ drawScreen Help =
                   , "[,] pick up item"
                   , "[d] drop item"
                   , "[e] eat item"
-                  , "[x] equip item"
+                  , "[w] wield or equip item"
+                  , "[x] examine item"
                   , "[?] for this help"
                   , ""
                   , "-- press any key to continue --"
                   ]
+
+drawScreen ExamineItem = drawInventoryScreen "Examine Item" examineItemFilter
 
 drawInventoryScreen :: String -> (Item -> Bool) -> GameIOState ()
 drawInventoryScreen str filt = do

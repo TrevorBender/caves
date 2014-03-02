@@ -21,7 +21,7 @@ gameDepth = 5
 debugOn = False
 
 data Screen = Start | Win | Lose | Play | DropItem | EquipItem | EatItem | ChooseLevelUp
-            | Help
+            | Help | ExamineItem
 
 type Coord = (Int, Int, Int)
 
@@ -250,3 +250,4 @@ gameChanged = use updated
 dropItemFilter _ = True
 equipItemFilter i = i^.i_attackPower > 0 || i^.i_defensePower > 0
 eatItemFilter i = i^.i_foodValue > 0
+examineItemFilter _ = True

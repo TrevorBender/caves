@@ -47,7 +47,8 @@ processInputScreen Play key =
          '<' -> climb Up
          ',' -> playerPickup
          'd' -> pushScreen DropItem
-         'x' -> pushScreen EquipItem
+         'x' -> pushScreen ExamineItem
+         'w' -> pushScreen EquipItem
          'e' -> pushScreen EatItem
          '?' -> pushScreen Help >> updated .= False
          _   -> updated .= False
@@ -65,13 +66,24 @@ processInputScreen ChooseLevelUp key =
 
 processInputScreen Help _ = dropScreen >> updated .= False
 
+processInputScreen ExamineItem key = inventoryScreen key examineItemFilter $ \item -> do
+    updated .= False
+    pl <- use $ player.location
+    notify pl $ itemStr item
+    where itemStr item = "It's a " ++ item^.i_name ++ ". " ++ itemDetails item
+          itemDetails item = let showIfValue i s = if i /= 0 then s ++ show i else ""
+                                 a = showIfValue (item^.i_attackPower) " attack: "
+                                 d = showIfValue (item^.i_defensePower) " defense: "
+                                 f = showIfValue (item^.i_foodValue) " food: "
+                                 in a ++ d ++ f
+
 inventoryScreen :: Char -> (Item -> Bool) -> (Item -> GameState()) -> GameState ()
 inventoryScreen key filt action = do
     mi <- selectedItem key filt
     when (isJust mi) $ do
         let i = fromJust mi
-        action i
         updated .= True
+        action i
         dropScreen
     case key of
          '\ESC' -> dropScreen

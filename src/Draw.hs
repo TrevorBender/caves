@@ -71,6 +71,20 @@ drawScreen ChooseLevelUp = do
     drawStr 6 5 "               "
     drawBlock 7 5 levelUpStrings
 
+drawScreen Help =
+    drawBlock 5 5 [ "Help"
+                  , "The only way out is to collect the idol from the bottom level"
+                  , "before climbing the stairs back to the surface"
+                  , ""
+                  , "[,] pick up item"
+                  , "[d] drop item"
+                  , "[e] eat item"
+                  , "[x] equip item"
+                  , "[?] for this help"
+                  , ""
+                  , "-- press any key to continue --"
+                  ]
+
 drawInventoryScreen :: String -> (Item -> Bool) -> GameIOState ()
 drawInventoryScreen str filt = do
     drawStr 5 5  str

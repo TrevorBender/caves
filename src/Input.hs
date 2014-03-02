@@ -49,6 +49,7 @@ processInputScreen Play key =
          'd' -> pushScreen DropItem
          'x' -> pushScreen EquipItem
          'e' -> pushScreen EatItem
+         '?' -> pushScreen Help >> updated .= False
          _   -> updated .= False
 
 processInputScreen DropItem key = inventoryScreen key dropItemFilter $ \item -> playerDropItem item
@@ -61,6 +62,8 @@ processInputScreen ChooseLevelUp key =
     case lookup key levelUpActions of
          Just a -> player %= execState a >> dropScreen
          _ -> return ()
+
+processInputScreen Help _ = dropScreen >> updated .= False
 
 inventoryScreen :: Char -> (Item -> Bool) -> (Item -> GameState()) -> GameState ()
 inventoryScreen key filt action = do

@@ -21,6 +21,7 @@ gameDepth = 5
 debugOn = False
 
 data Screen = Start | Win | Lose | Play | DropItem | EquipItem | EatItem | ChooseLevelUp
+            | Help
 
 type Coord = (Int, Int, Int)
 

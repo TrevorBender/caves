@@ -51,39 +51,34 @@ processInputScreen Play key =
          'e' -> pushScreen EatItem
          _   -> updated .= False
 
-processInputScreen DropItem key = inventoryScreen key $ \ix -> playerDropItem ix
+processInputScreen DropItem key = inventoryScreen key dropItemFilter $ \item -> playerDropItem item
 
-processInputScreen EquipItem key = inventoryScreen key $ \ix -> do
-    item <- use $ player.inventory. to (!! ix)
-    equip item
+processInputScreen EquipItem key = inventoryScreen key equipItemFilter $ \item -> equip item
 
-processInputScreen EatItem key = inventoryScreen key $ \ix -> do
-    item <- use $ player.inventory .to (!! ix)
-    eat item
+processInputScreen EatItem key = inventoryScreen key eatItemFilter $ \item -> eat item
 
 processInputScreen ChooseLevelUp key =
     case lookup key levelUpActions of
          Just a -> player %= execState a >> dropScreen
          _ -> return ()
 
-inventoryScreen :: Char -> (Int -> GameState()) -> GameState ()
-inventoryScreen key action = do
-    mix <- selectedItem key
-    when (isJust mix) $ do
-        let ix = fromJust mix
-        action ix
+inventoryScreen :: Char -> (Item -> Bool) -> (Item -> GameState()) -> GameState ()
+inventoryScreen key filt action = do
+    mi <- selectedItem key filt
+    when (isJust mi) $ do
+        let i = fromJust mi
+        action i
         updated .= True
         dropScreen
     case key of
          '\ESC' -> dropScreen
          _ -> return ()
 
-selectedItem :: Char -> GameState (Maybe Int)
-selectedItem key = do
+selectedItem :: Char -> (Item -> Bool) -> GameState (Maybe Item)
+selectedItem key filt = do
     inv <- use $ player.inventory
-    let ks = take (length $ inv) $ zip [0..] ['a'..]
-        ks' = filter (\(_,k) -> k == key) ks
-    return $ if null ks' then Nothing else Just $ (fst . head) ks'
+    let ks = filter (\(_,i) -> filt i) . zip ['a'..] $ inv
+    return $ lookup key ks
 
 endGame :: GameState ()
 endGame = do

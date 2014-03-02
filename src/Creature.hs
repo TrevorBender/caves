@@ -368,17 +368,15 @@ playerPickup = do
         player.inventory %= (item:)
         notify loc $ "You pickup a " ++ (item^.i_name)
 
-playerDropItem :: Int -> GameState ()
-playerDropItem ix = do
+playerDropItem :: Item -> GameState ()
+playerDropItem item = do
     loc <- use $ player.location
-    item <- use $ player.inventory .to (!! ix)
-    player.inventory %= (remove ix)
+    player.inventory %= (remove item)
     notify loc $ "You drop the " ++ (item^.i_name)
     items %= insert loc (item {_i_location = loc})
     unequip item
 
-    where remove ix xs = let (bs, cs) = splitAt ix xs
-                         in bs ++ tail cs
+    where remove item = P.filter (\i -> (i^.i_id) /= (item^.i_id))
 
 equip :: Item -> GameState ()
 equip i = do

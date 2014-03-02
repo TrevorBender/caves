@@ -60,11 +60,11 @@ drawScreen Play = do
     drawHud
     drawMessages
 
-drawScreen DropItem = drawInventoryScreen "Drop Item" $ \_ -> True
+drawScreen DropItem = drawInventoryScreen "Drop Item" dropItemFilter
 
-drawScreen EquipItem = drawInventoryScreen "Equip Item" $ \i -> i^.i_attackPower > 0 || i^.i_defensePower > 0
+drawScreen EquipItem = drawInventoryScreen "Equip Item" equipItemFilter
 
-drawScreen EatItem = drawInventoryScreen "Eat Item" $ \i -> i^.i_foodValue /= 0
+drawScreen EatItem = drawInventoryScreen "Eat Item" eatItemFilter
 
 drawScreen ChooseLevelUp = do
     drawStr 5 5 "Choose Level Up"

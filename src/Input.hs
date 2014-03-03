@@ -15,7 +15,7 @@ import UI.HSCurses.Curses as C (Key(..), getCh)
 
 import Game
 import Creature (move, playerPickup, playerDropItem, equip, eat, levelUpActions)
-import World (creatureAt, isFloor, floor, tileAt', stairsDown, stairsUp, describe)
+import World (creatureAt, isFloor, floor, tileAt', stairsDown, stairsUp, describe, describeItem)
 
 getInput :: IO Key
 getInput = getCh
@@ -70,13 +70,7 @@ processInputScreen Help _ = dropScreen >> updated .= False
 processInputScreen ExamineItem key = inventoryScreen key examineItemFilter $ \item -> do
     updated .= False
     pl <- use $ player.location
-    notify pl $ itemStr item
-    where itemStr item = "It's a " ++ item^.i_name ++ ". " ++ itemDetails item
-          itemDetails item = let showIfValue i s = if i /= 0 then s ++ show i else ""
-                                 a = showIfValue (item^.i_attackPower) " attack: "
-                                 d = showIfValue (item^.i_defensePower) " defense: "
-                                 f = showIfValue (item^.i_foodValue) " food: "
-                                 in a ++ d ++ f
+    notify pl $ describeItem item
 
 processInputScreen Look key = targetScreen key $ do
     pl <- use $ player.location

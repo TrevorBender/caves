@@ -146,12 +146,21 @@ describe loc = do
     isI <- isItem loc
     vw <- use visibleWorld
     let t = tileAtWorld vw loc
-    if t == unknownTile then return "unknown"
+    if t == unknownTile then return "Unknown"
     else if isC then do
         mc <- creatureAt loc
-        return $ fromJust . fmap _name $ mc
+        return $ "It's a " ++ (fromJust . fmap _name $ mc)
     else if isI then do
         i <- itemAt loc
-        return $ i^.i_name
+        return $ describeItem i
     else do
-        return $ show $ t^.kind
+        return $ "It's a " ++ t^.t_description
+
+describeItem :: Item -> String
+describeItem item = "It's a " ++ item^.i_name ++ ". " ++ itemDetails item
+    where itemDetails item =
+              let showIfValue i s = if i /= 0 then s ++ show i else ""
+                  a = showIfValue (item^.i_attackPower) " attack: "
+                  d = showIfValue (item^.i_defensePower) " defense: "
+                  f = showIfValue (item^.i_foodValue) " food: "
+                  in a ++ d ++ f

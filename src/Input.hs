@@ -15,7 +15,7 @@ import UI.HSCurses.Curses as C (Key(..), getCh)
 
 import Game
 import Creature (move, playerPickup, playerDropItem, equip, eat, levelUpActions)
-import World (creatureAt, isFloor, floor, tileAt', stairsDown, stairsUp)
+import World (creatureAt, isFloor, floor, tileAt', stairsDown, stairsUp, describe)
 
 getInput :: IO Key
 getInput = getCh
@@ -50,6 +50,7 @@ processInputScreen Play key =
          'x' -> pushScreen ExamineItem
          'w' -> pushScreen EquipItem
          'e' -> pushScreen EatItem
+         't' -> look
          '?' -> pushScreen Help >> updated .= False
          _   -> updated .= False
 
@@ -77,8 +78,43 @@ processInputScreen ExamineItem key = inventoryScreen key examineItemFilter $ \it
                                  f = showIfValue (item^.i_foodValue) " food: "
                                  in a ++ d ++ f
 
+processInputScreen Look key = targetScreen key $ do
+    pl <- use $ player.location
+    tl <- use targetLoc
+    describe tl >>= notify pl
+
+
+targetScreen :: Char -> GameState () -> GameState ()
+targetScreen key targetAction = do
+    updated .= False
+    case key of
+         'k' -> moveCursor N
+         'l' -> moveCursor E
+         'j' -> moveCursor S
+         'h' -> moveCursor W
+         'u' -> moveCursor NE
+         'n' -> moveCursor SE
+         'b' -> moveCursor SW
+         'y' -> moveCursor NW
+         '\ESC' -> dropScreen
+         '\n' -> targetAction >> dropScreen
+         _      -> return ()
+    where moveCursor dir = do
+              tl <- use targetLoc
+              let tl' = tl <+> offsetDir dir
+                  inGame = inBounds tl'
+              when inGame $ targetLoc .= tl'
+
+look :: GameState ()
+look = do
+    pushScreen Look
+    updated .= False
+    pl <- use $ player.location
+    targetLoc .= pl
+
 inventoryScreen :: Char -> (Item -> Bool) -> (Item -> GameState()) -> GameState ()
 inventoryScreen key filt action = do
+    updated .= False
     mi <- selectedItem key filt
     when (isJust mi) $ do
         let i = fromJust mi

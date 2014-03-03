@@ -271,6 +271,7 @@ createGame win cstyles = do
                     , _window = win
                     , _styles = cstyles
                     , _regionMap = emptyRegionMap
+                    , _targetLoc = (0,0,0)
                     }
     return $ updateNewGame game
 

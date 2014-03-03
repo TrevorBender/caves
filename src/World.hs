@@ -7,7 +7,7 @@ import Prelude hiding (floor)
 import Control.Lens
 import Control.Monad.State.Strict (State, get, put, execState)
 import Data.Array as A
-import Data.Maybe (isNothing, isJust)
+import Data.Maybe (isNothing, isJust, fromJust)
 import Data.Map.Strict as M (elems, lookup, delete, (!), member)
 import System.Random (randomRs, StdGen)
 
@@ -15,12 +15,12 @@ import Game
 import Line (line)
 import Random as R (randomR)
 
-floor = Tile { _kind = Floor , _glyph = '.' }
-wall = Tile { _kind = Wall , _glyph = '#' }
-outOfBounds = Tile { _kind = Wall , _glyph = ' ' }
-stairsDown = Tile { _kind = StairsDown , _glyph = '>' }
-stairsUp = Tile { _kind = StairsUp , _glyph = '<' }
-unknownTile = Tile { _kind = Unknown , _glyph = ' ' }
+floor = Tile { _kind = Floor , _glyph = '.' , _t_description = "cave floor" }
+wall = Tile { _kind = Wall , _glyph = '#' , _t_description = "cave wall" }
+outOfBounds = Tile { _kind = Wall , _glyph = ' ' , _t_description = "out of bounds" }
+stairsDown = Tile { _kind = StairsDown , _glyph = '>' , _t_description = "stairs down" }
+stairsUp = Tile { _kind = StairsUp , _glyph = '<' , _t_description = "stairs up" }
+unknownTile = Tile { _kind = Unknown , _glyph = ' ' , _t_description = "unknown" }
 
 canSee :: Game -> Coord -> Creature -> Bool
 canSee game loc@(x,y,z) c =
@@ -139,3 +139,19 @@ isEmpty loc = do
 
 removeItemFromWorld :: Coord -> GameState ()
 removeItemFromWorld loc = items %= (delete loc)
+
+describe :: Coord -> GameState String
+describe loc = do
+    isC <- isCreature loc
+    isI <- isItem loc
+    vw <- use visibleWorld
+    let t = tileAtWorld vw loc
+    if t == unknownTile then return "unknown"
+    else if isC then do
+        mc <- creatureAt loc
+        return $ fromJust . fmap _name $ mc
+    else if isI then do
+        i <- itemAt loc
+        return $ i^.i_name
+    else do
+        return $ show $ t^.kind

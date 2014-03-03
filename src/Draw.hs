@@ -18,6 +18,7 @@ import UI.HSCurses.CursesHelper
 import Game
 import World (tileAt, unknownTile, canSee)
 import Creature (creatureAttack, creatureDefense, levelUpStrings)
+import Line (line)
 
 type GameIOState = StateT Game IO
 
@@ -87,6 +88,21 @@ drawScreen Help =
                   ]
 
 drawScreen ExamineItem = drawInventoryScreen "Examine Item" examineItemFilter
+
+drawScreen Look = targetScreen "Look at"
+
+targetScreen :: String -> GameIOState ()
+targetScreen name = do
+    drawStr (gameHeight+1) 5 name
+    (x,y,_) <- use targetLoc
+    (px,py,_) <- use $ player.location
+    let ln = tail $ line (px, py) (x, y)
+    forM_ ln $ \(x, y) -> do
+        visible <- inScreenBounds x y
+        when visible $ do
+            (sx,sy) <- getScreenCoords x y
+            drawStr sy sx "*"
+
 
 drawInventoryScreen :: String -> (Item -> Bool) -> GameIOState ()
 drawInventoryScreen str filt = do

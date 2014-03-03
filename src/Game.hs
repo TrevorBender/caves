@@ -21,7 +21,7 @@ gameDepth = 5
 debugOn = False
 
 data Screen = Start | Win | Lose | Play | DropItem | EquipItem | EatItem | ChooseLevelUp
-            | Help | ExamineItem
+            | Help | ExamineItem | Look
 
 type Coord = (Int, Int, Int)
 
@@ -101,11 +101,12 @@ instance Eq Creature where
 
 type CreatureState = State Creature
 
-data TileKind = Floor | Wall | StairsUp | StairsDown | Unknown deriving (Eq)
+data TileKind = Floor | Wall | StairsUp | StairsDown | Unknown deriving (Eq, Show)
 
 data Tile = Tile
     { _kind  :: TileKind
     , _glyph :: Char
+    , _t_description :: String
     }
 makeLenses ''Tile
 
@@ -134,6 +135,7 @@ data Game = Game
     , _regionMap :: RegionMap
     , _window :: Window
     , _styles :: Map StyleType CursesStyle
+    , _targetLoc :: Coord
     }
 makeLenses ''Game
 

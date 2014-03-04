@@ -73,24 +73,17 @@ data Creature = Creature
     , _c_id :: Int
     , _c_kind :: CreatureKind
     , _name :: String
-
     , _attack_power :: Int
     , _defense :: Int
-
     , _hp :: Int
     , _maxHp :: Int
-
     , _visionRadius :: Int
-
     , _inventory :: [Item]
     , _maxInv :: Int
-
     , _weapon :: Maybe Item
     , _armor :: Maybe Item
-
     , _food :: Int
     , _maxFood :: Int
-
     , _xp :: Int
     , _level :: Int
     , _levelUpgrades :: Int

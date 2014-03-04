@@ -260,9 +260,8 @@ creatureAttack c = c^.attack_power + itemAttackPower c
 creatureDefense :: Creature -> Int
 creatureDefense c = c^.defense + itemDefensePower c
 
-attack :: Creature -> Creature -> GameState()
-attack creature other = get >>= \game -> do
-    let maxAttack = creatureAttack  creature - creatureDefense other
+commonAttack :: Creature -> Creature -> Int -> GameState ()
+commonAttack creature other maxAttack = do
     when (maxAttack > 0) $ do
         attackValue <- randomR (1, maxAttack)
         let other' = (hp -~ attackValue) other
@@ -275,6 +274,17 @@ attack creature other = get >>= \game -> do
                 when (xpGain > 0) $ modifyXP xpGain creature
         if other'^.hp < 1 then dieAction
                           else updateCreature other'
+
+playerThrowAttack :: Item -> Creature -> GameState ()
+playerThrowAttack item other = do
+    p <- use player
+    let maxAttack = div (p^.attack_power) 2 + item^.i_throwAttackPower - creatureDefense other
+    commonAttack p other maxAttack
+
+attack :: Creature -> Creature -> GameState()
+attack creature other = do
+    let maxAttack = creatureAttack  creature - creatureDefense other
+    commonAttack creature other maxAttack
 
 die :: Creature -> GameState ()
 die c = do
@@ -312,7 +322,6 @@ dropCorpse c = do
 updateCreature :: Creature -> GameState ()
 updateCreature c = creatures %= insert (c^.c_id) c
 
--- TODO refactor deep nesting
 move :: Creature -> Coord -> GameState ()
 move creature offset = do
     let origin = creature^.location
@@ -320,6 +329,7 @@ move creature offset = do
         loc = move origin
     moveAbs creature loc
 
+-- TODO refactor deep nesting
 moveAbs :: Creature -> Coord -> GameState ()
 moveAbs creature loc = do
     when (inBounds loc) $ do
@@ -427,21 +437,4 @@ xpOf c =
         av  = creatureAttack c
         dv  = creatureDefense c
         in mhp + av + dv
-
-playerThrowAttack :: Item -> Creature -> GameState ()
-playerThrowAttack item other = do
-    p <- use player
-    let maxAttack = div (p^.attack_power) 2 + item^.i_throwAttackPower - creatureDefense other
-    when (maxAttack > 0) $ do
-        attackValue <- randomR (1, maxAttack)
-        let other' = (hp -~ attackValue) other
-        attackStr <- action p "attack"
-        targetStr <- target other
-        notify (p^.location) $ attackStr ++ " " ++ targetStr ++ " for " ++ show attackValue ++ " damage."
-        let dieAction = do
-                die other'
-                let xpGain = xpOf other' - 2 * (p^.level)
-                when (xpGain > 0) $ modifyXP xpGain p
-        if other'^.hp < 1 then dieAction
-                          else updateCreature other'
 

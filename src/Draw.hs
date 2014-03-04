@@ -91,6 +91,10 @@ drawScreen ExamineItem = drawInventoryScreen "Examine Item" examineItemFilter
 
 drawScreen Look = targetScreen "Look at"
 
+drawScreen Throw = targetScreen "Throw at"
+
+drawScreen ThrowItem = drawInventoryScreen "Throw Item" throwItemFilter
+
 targetScreen :: String -> GameIOState ()
 targetScreen name = do
     drawStr (gameHeight+1) 5 name

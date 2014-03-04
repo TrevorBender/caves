@@ -148,8 +148,8 @@ describe loc = do
     let t = tileAtWorld vw loc
     if t == unknownTile then return "Unknown"
     else if isC then do
-        mc <- creatureAt loc
-        return $ "It's a " ++ (fromJust . fmap _name $ mc)
+        Just c <- creatureAt loc
+        return $ "It's a " ++ (c^.name)
     else if isI then do
         i <- itemAt loc
         return $ describeItem i

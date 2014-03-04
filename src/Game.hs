@@ -21,7 +21,7 @@ gameDepth = 5
 debugOn = False
 
 data Screen = Start | Win | Lose | Play | DropItem | EquipItem | EatItem | ChooseLevelUp
-            | Help | ExamineItem | Look
+            | Help | ExamineItem | Look | Throw | ThrowItem
 
 type Coord = (Int, Int, Int)
 
@@ -58,6 +58,7 @@ data Item = Item
     , _i_attackPower :: Int
     , _i_defensePower :: Int
     , _i_foodValue :: Int
+    , _i_throwAttackPower :: Int
     }
 makeLenses ''Item
 
@@ -253,3 +254,4 @@ dropItemFilter _ = True
 equipItemFilter i = i^.i_attackPower > 0 || i^.i_defensePower > 0
 eatItemFilter i = i^.i_foodValue > 0
 examineItemFilter _ = True
+throwItemFilter i = i^.i_throwAttackPower > 0

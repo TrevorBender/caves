@@ -89,12 +89,14 @@ defaultItem = Item { _i_location = (0,0,0)
                    , _i_attackPower = 0
                    , _i_defensePower = 0
                    , _i_foodValue = 0
+                   , _i_throwAttackPower = 0
                    }
 
 createRock :: Int -> GameState Item
 createRock = item defaultItem
     { _i_name = "rock"
     , _i_glyph = ','
+    , _i_throwAttackPower = 1
     }
 
 createVictoryItem :: GameState Item
@@ -109,6 +111,7 @@ createDagger = item defaultItem
     { _i_name = "dagger"
     , _i_glyph = ')'
     , _i_attackPower = 5
+    , _i_throwAttackPower = 5
     }
 
 createSword :: Int -> GameState Item
@@ -117,6 +120,7 @@ createSword = item defaultItem
     , _i_style = SwordStyle
     , _i_glyph = ')'
     , _i_attackPower = 10
+    , _i_throwAttackPower = 10
     }
 
 createStaff :: Int -> GameState Item
@@ -126,6 +130,7 @@ createStaff = item defaultItem
     , _i_glyph = ')'
     , _i_attackPower = 5
     , _i_defensePower = 5
+    , _i_throwAttackPower = 5
     }
 
 createTunic :: Int -> GameState Item

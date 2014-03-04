@@ -9,13 +9,13 @@ import Control.Lens
 import Control.Monad (when)
 import Control.Monad.State.Strict (get, execState)
 import Data.Array
-import Data.Map.Strict as M (adjust)
+import Data.Map.Strict as M (insert)
 import Data.Maybe (isJust, fromJust)
 import UI.HSCurses.Curses as C (Key(..), getCh)
 
 import Game
-import Creature (move, playerPickup, playerDropItem, equip, eat, levelUpActions)
-import World (creatureAt, isFloor, floor, tileAt', stairsDown, stairsUp, describe, describeItem)
+import Creature (move, playerPickup, playerDropItem, equip, eat, levelUpActions, playerThrowAttack)
+import World (creatureAt, isFloor, floor, tileAt', stairsDown, stairsUp, describe, describeItem, canSee', isCreature)
 
 getInput :: IO Key
 getInput = getCh
@@ -46,11 +46,16 @@ processInputScreen Play key =
          '>' -> climb Down
          '<' -> climb Up
          ',' -> playerPickup
-         'd' -> pushScreen DropItem
-         'x' -> pushScreen ExamineItem
-         'w' -> pushScreen EquipItem
-         'e' -> pushScreen EatItem
-         't' -> look
+         'd' -> pushScreen DropItem >> updated .= False
+         'x' -> pushScreen ExamineItem >> updated .= False
+         'w' -> pushScreen EquipItem >> updated .= False
+         'e' -> pushScreen EatItem >> updated .= False
+         't' -> do
+             pushScreen Throw
+             updated .= False
+             pl <- use $ player.location
+             targetLoc .= pl
+         'g' -> look
          '?' -> pushScreen Help >> updated .= False
          _   -> updated .= False
 
@@ -77,6 +82,25 @@ processInputScreen Look key = targetScreen key $ do
     tl <- use targetLoc
     describe tl >>= notify pl
 
+processInputScreen ThrowItem key = inventoryScreen key throwItemFilter $ \item -> do
+    tl <- use targetLoc
+    p <- use player
+    isVis <- canSee' tl p
+    when isVis $ do
+        isC <- isCreature tl
+        if isC then do
+            Just c <- creatureAt tl
+            playerThrowAttack item c
+            player.inventory %= remove item
+        else do
+            player.inventory %= remove item
+            items %= insert tl (item { _i_location = tl })
+
+    where remove item = filter (\i -> (i^.i_id) /= (item^.i_id))
+
+processInputScreen Throw key = targetScreen key $ do
+    pushScreen ThrowItem
+    updated .= False
 
 targetScreen :: Char -> GameState () -> GameState ()
 targetScreen key targetAction = do
@@ -91,7 +115,7 @@ targetScreen key targetAction = do
          'b' -> moveCursor SW
          'y' -> moveCursor NW
          '\ESC' -> dropScreen
-         '\n' -> targetAction >> dropScreen
+         '\n' -> dropScreen >> targetAction
          _      -> return ()
     where moveCursor dir = do
               tl <- use targetLoc

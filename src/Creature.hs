@@ -13,6 +13,7 @@ module Creature
     , eat
     , levelUpStrings
     , levelUpActions
+    , playerThrowAttack
     ) where
 
 import Prelude as P hiding (floor)
@@ -304,6 +305,7 @@ dropCorpse c = do
                       , _i_attackPower = 0
                       , _i_defensePower = 0
                       , _i_foodValue = fv
+                      , _i_throwAttackPower = 0
                       }
     items %= insert (corpse^.i_location) corpse
 
@@ -425,3 +427,21 @@ xpOf c =
         av  = creatureAttack c
         dv  = creatureDefense c
         in mhp + av + dv
+
+playerThrowAttack :: Item -> Creature -> GameState ()
+playerThrowAttack item other = do
+    p <- use player
+    let maxAttack = div (p^.attack_power) 2 + item^.i_throwAttackPower - creatureDefense other
+    when (maxAttack > 0) $ do
+        attackValue <- randomR (1, maxAttack)
+        let other' = (hp -~ attackValue) other
+        attackStr <- action p "attack"
+        targetStr <- target other
+        notify (p^.location) $ attackStr ++ " " ++ targetStr ++ " for " ++ show attackValue ++ " damage."
+        let dieAction = do
+                die other'
+                let xpGain = xpOf other' - 2 * (p^.level)
+                when (xpGain > 0) $ modifyXP xpGain p
+        if other'^.hp < 1 then dieAction
+                          else updateCreature other'
+

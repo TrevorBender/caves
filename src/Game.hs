@@ -245,6 +245,6 @@ gameChanged = use updated
 
 dropItemFilter _ = True
 equipItemFilter i = i^.i_attackPower > 0 || i^.i_defensePower > 0
-eatItemFilter i = i^.i_foodValue > 0
+eatItemFilter i = i^.i_foodValue /= 0
 examineItemFilter _ = True
 throwItemFilter i = i^.i_throwAttackPower > 0

@@ -50,12 +50,8 @@ processInputScreen Play key =
          'x' -> pushScreen ExamineItem >> updated .= False
          'w' -> pushScreen EquipItem >> updated .= False
          'e' -> pushScreen EatItem >> updated .= False
-         't' -> do
-             pushScreen Throw
-             updated .= False
-             pl <- use $ player.location
-             targetLoc .= pl
-         'g' -> look
+         't' -> pushScreen Throw >> updated .= False
+         'g' -> pushScreen Look >> updated .= False
          '?' -> pushScreen Help >> updated .= False
          _   -> updated .= False
 
@@ -122,13 +118,6 @@ targetScreen key targetAction = do
               let tl' = tl <+> offsetDir dir
                   inGame = inBounds tl'
               when inGame $ targetLoc .= tl'
-
-look :: GameState ()
-look = do
-    pushScreen Look
-    updated .= False
-    pl <- use $ player.location
-    targetLoc .= pl
 
 inventoryScreen :: Char -> (Item -> Bool) -> (Item -> GameState()) -> GameState ()
 inventoryScreen key filt action = do

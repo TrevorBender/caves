@@ -199,7 +199,9 @@ updateNewGame = execState $ do
     removeSmallRegions
     createStairs
     createVictoryStairs
-    (player.location .=) =<< findEmptyLocation 0
+    loc <- findEmptyLocation 0
+    player.location .= loc
+    targetLoc .= loc
     populateGame
     createItems
     cleanUp

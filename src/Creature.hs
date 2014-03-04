@@ -341,7 +341,9 @@ moveAbs creature loc = do
              Nothing ->
                  if creature == p then
                     if canMove
-                       then (player.location) .= loc
+                       then do
+                           (player.location) .= loc
+                           targetLoc .= loc
                        else dig loc
                     else if canMove
                        then creatures %= (adjust (location .~ loc) (creature^.c_id))

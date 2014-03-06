@@ -10,6 +10,7 @@ module Creature
     , createFungus
     , createBat
     , createZombie
+    , createGoblin
     , eat
     , levelUpStrings
     , levelUpActions
@@ -122,6 +123,19 @@ createZombie = creature creatureDefaults
     , _visionRadius = 15
     }
 
+createGoblin :: Int -> GameState Creature
+createGoblin = creature creatureDefaults
+    { _c_kind = Goblin
+    , _c_glyph = 'g'
+    , _c_style = ZombieStyle
+    , _name = "goblin"
+    , _attack_power = 20
+    , _defense = 10
+    , _hp = 20
+    , _maxHp = 20
+    , _visionRadius = 20
+    }
+
 creatureTick :: Creature -> GameState ()
 creatureTick c = creatureTick' (c^.c_kind) c
 
@@ -141,15 +155,24 @@ creatureTick' Player p = do
     when (ups > 0) $ pushScreen ChooseLevelUp
 
 creatureTick' Zombie z = do
-    pl@(px,py,pz) <- use $ player.location
+    pl <- use $ player.location
     playerVisible <- canSee' pl z
-    let hunt = do
-            let (x,y,_) = z^.location
-                ln = line (x,y) (px, py)
-                (x', y') = ln !! 1
-            moveAbs z (x',y',pz)
-    if playerVisible then hunt else wander z
+    if playerVisible then hunt z else wander z
     autoLevelUp z
+
+creatureTick' Goblin g = do
+    pl <- use $ player.location
+    playerVisible <- canSee' pl g
+    if playerVisible then hunt g else wander g
+    autoLevelUp g
+
+hunt :: Creature -> GameState ()
+hunt c = do
+    (px,py,pz) <- use $ player.location
+    let (x,y,_) = c^.location
+        ln = line (x,y) (px, py)
+        (x', y') = ln !! 1
+    moveAbs c (x',y',pz)
 
 
 duplicate :: Creature -> GameState ()

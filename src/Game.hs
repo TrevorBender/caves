@@ -66,7 +66,7 @@ makeLenses ''Item
 instance Eq Item where
     (==) a b = a^.i_id == b^.i_id
 
-data CreatureKind = Player | Fungus | Bat | Zombie deriving (Eq)
+data CreatureKind = Player | Fungus | Bat | Zombie | Goblin deriving (Eq)
 data Creature = Creature
     { _location :: Coord
     , _c_glyph :: Char

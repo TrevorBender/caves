@@ -20,7 +20,7 @@ import UI.HSCurses.CursesHelper
 import Game
 import World
 import Random
-import Creature (createPlayer, createFungus, createBat, createZombie)
+import Creature (createPlayer, createFungus, createBat, createZombie, createGoblin)
 
 fungiPerLevel = 5
 batsPerLevel = 5
@@ -30,6 +30,7 @@ populateGame = do
     populateCreature createFungus (\_ -> fungiPerLevel)
     populateCreature createBat (\_ -> batsPerLevel)
     populateCreature createZombie id
+    populateCreature createGoblin (\depth -> if depth < 2 then 0 else depth - 1)
 
     where populateCreature :: (Int -> GameState Creature) -> (Int -> Int) -> GameState ()
           populateCreature createCreature cPerLevel = do
@@ -140,7 +141,7 @@ createBow = item defaultItem
     , _i_style = ZombieStyle
     , _i_glyph = ')'
     , _i_attackPower = 1
-    , _i_rangedAttackPower = 10
+    , _i_rangedAttackPower = 5
     }
 
 createTunic :: Int -> GameState Item
@@ -201,6 +202,12 @@ createItems = do
 
 cleanUp = regionMap .= emptyRegionMap
 
+updatePlayerLocation :: GameState ()
+updatePlayerLocation = do
+    loc <- findEmptyLocation 0
+    player.location .= loc
+    targetLoc .= loc
+
 updateNewGame :: Game -> Game
 updateNewGame = execState $ do
     createWorld
@@ -209,9 +216,7 @@ updateNewGame = execState $ do
     removeSmallRegions
     createStairs
     createVictoryStairs
-    loc <- findEmptyLocation 0
-    player.location .= loc
-    targetLoc .= loc
+    updatePlayerLocation
     populateGame
     createItems
     cleanUp

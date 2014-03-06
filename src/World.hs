@@ -1,6 +1,17 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module World where
+module World
+    ( isFloor , floor , stairsDown , stairsUp , wall , unknownTile
+    , isCreature , creatureAt
+    , isItem , itemAt , removeItemFromWorld
+    , tileAt , tileAt'
+    , seeThrough , canSee , canSee'
+    , findEmptyLocation
+    , describe , describeItem
+    , isEmpty , createWorld , smoothWorld , tileAtWorld
+    , gameBounds
+    , updateVisibleTiles
+    ) where
 
 import Prelude hiding (floor)
 

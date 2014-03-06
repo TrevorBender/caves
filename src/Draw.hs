@@ -95,6 +95,8 @@ drawScreen Throw = targetScreen "Throw at"
 
 drawScreen ThrowItem = drawInventoryScreen "Throw Item" throwItemFilter
 
+drawScreen FireWeapon = targetScreen "Fire weapon at"
+
 targetScreen :: String -> GameIOState ()
 targetScreen name = do
     drawStr (gameHeight+1) 5 name

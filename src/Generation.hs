@@ -90,6 +90,7 @@ defaultItem = Item { _i_location = (0,0,0)
                    , _i_defensePower = 0
                    , _i_foodValue = 0
                    , _i_throwAttackPower = 0
+                   , _i_rangedAttackPower = 0
                    }
 
 createRock :: Int -> GameState Item
@@ -133,6 +134,15 @@ createStaff = item defaultItem
     , _i_throwAttackPower = 5
     }
 
+createBow :: Int -> GameState Item
+createBow = item defaultItem
+    { _i_name = "bow"
+    , _i_style = ZombieStyle
+    , _i_glyph = ')'
+    , _i_attackPower = 1
+    , _i_rangedAttackPower = 10
+    }
+
 createTunic :: Int -> GameState Item
 createTunic = item defaultItem
     { _i_name = "tunic"
@@ -165,7 +175,7 @@ createBread = item defaultItem
 
 randomWeapon :: Int -> GameState Item
 randomWeapon depth = do
-    cf <- randomL [ createDagger, createSword, createStaff ]
+    cf <- randomL [ createDagger, createSword, createStaff, createBow ]
     cf depth
 
 randomArmor :: Int -> GameState Item

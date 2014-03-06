@@ -14,6 +14,7 @@ module Creature
     , levelUpStrings
     , levelUpActions
     , playerThrowAttack
+    , playerRangedAttack
     ) where
 
 import Prelude as P hiding (floor)
@@ -281,6 +282,13 @@ playerThrowAttack item other = do
     let maxAttack = div (p^.attack_power) 2 + item^.i_throwAttackPower - creatureDefense other
     commonAttack p other maxAttack
 
+playerRangedAttack :: Creature -> GameState ()
+playerRangedAttack other = do
+    p <- use player
+    let Just w = p^.weapon
+        maxAttack = div (p^.attack_power) 2 + w^.i_rangedAttackPower - creatureDefense other
+    commonAttack p other maxAttack
+
 attack :: Creature -> Creature -> GameState()
 attack creature other = do
     let maxAttack = creatureAttack  creature - creatureDefense other
@@ -316,6 +324,7 @@ dropCorpse c = do
                       , _i_defensePower = 0
                       , _i_foodValue = fv
                       , _i_throwAttackPower = 0
+                      , _i_rangedAttackPower = 0
                       }
     items %= insert (corpse^.i_location) corpse
 

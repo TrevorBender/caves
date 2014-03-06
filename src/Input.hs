@@ -14,7 +14,7 @@ import Data.Maybe (isJust, fromJust)
 import UI.HSCurses.Curses as C (Key(..), getCh)
 
 import Game
-import Creature (move, playerPickup, playerDropItem, equip, eat, levelUpActions, playerThrowAttack)
+import Creature (move, playerPickup, playerDropItem, equip, eat, levelUpActions, playerThrowAttack, playerRangedAttack)
 import World (creatureAt, isFloor, floor, tileAt', stairsDown, stairsUp, describe, describeItem, canSee', isCreature)
 
 getInput :: IO Key
@@ -52,6 +52,7 @@ processInputScreen Play key =
          'e' -> pushScreen EatItem >> updated .= False
          't' -> pushScreen Throw >> updated .= False
          'g' -> pushScreen Look >> updated .= False
+         'f' -> fireWeaponScreen
          '?' -> pushScreen Help >> updated .= False
          _   -> updated .= False
 
@@ -97,6 +98,29 @@ processInputScreen ThrowItem key = inventoryScreen key throwItemFilter $ \item -
 processInputScreen Throw key = targetScreen key $ do
     pushScreen ThrowItem
     updated .= False
+
+processInputScreen FireWeapon key = targetScreen key $ do
+    updated .= True
+    tl <- use targetLoc
+    p <- use player
+    isVis <- canSee' tl p
+    when isVis $ do
+        isC <- isCreature tl
+        if isC then do
+                    Just c <- creatureAt tl
+                    playerRangedAttack c
+               else return ()
+
+fireWeaponScreen :: GameState ()
+fireWeaponScreen = do
+    updated .= False
+    mw <- use $ player.weapon
+    if isJust mw then do
+        let Just w = mw
+            ra = w^.i_rangedAttackPower
+        when (ra /= 0) $ do
+            pushScreen FireWeapon
+    else return ()
 
 targetScreen :: Char -> GameState () -> GameState ()
 targetScreen key targetAction = do

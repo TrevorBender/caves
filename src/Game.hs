@@ -21,7 +21,7 @@ gameDepth = 5
 debugOn = False
 
 data Screen = Start | Win | Lose | Play | DropItem | EquipItem | EatItem | ChooseLevelUp
-            | Help | ExamineItem | Look | Throw | ThrowItem
+            | Help | ExamineItem | Look | Throw | ThrowItem | FireWeapon
 
 type Coord = (Int, Int, Int)
 
@@ -59,6 +59,7 @@ data Item = Item
     , _i_defensePower :: Int
     , _i_foodValue :: Int
     , _i_throwAttackPower :: Int
+    , _i_rangedAttackPower :: Int
     }
 makeLenses ''Item
 

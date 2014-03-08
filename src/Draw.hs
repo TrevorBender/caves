@@ -51,7 +51,11 @@ drawScreen Start = do
 
 drawScreen Win = drawStr 4 4 "You WIN!"
 
-drawScreen Lose = drawStr 4 4 "You LOSE!"
+drawScreen Lose = do
+    drawStr 4 4 "You LOSE!"
+    msg <- use loseMessage
+    drawStr 5 4 msg
+    drawStr 6 4 " [ Press 'q' to quit ]"
 
 drawScreen Play = do
     drawLevel

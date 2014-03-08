@@ -5,7 +5,7 @@ module Creature
     , playerDropItem
     , creatureAttack
     , creatureDefense
-    , equip
+    , playerEquip
     , createPlayer
     , createFungus
     , createBat
@@ -293,7 +293,7 @@ commonAttack creature other maxAttack = do
         targetStr <- target other
         notify (creature^.location) $ attackStr ++ " " ++ targetStr ++ " for " ++ show attackValue ++ " damage."
         let dieAction = do
-                die other'
+                die other' creature
                 let xpGain = xpOf other' - 2 * (creature^.level)
                 when (xpGain > 0) $ modifyXP xpGain creature
         if other'^.hp < 1 then dieAction
@@ -317,10 +317,10 @@ attack creature other = do
     let maxAttack = creatureAttack  creature - creatureDefense other
     commonAttack creature other maxAttack
 
-die :: Creature -> GameState ()
-die c = do
+die :: Creature -> Creature -> GameState ()
+die c other = do
     isPlayer <- use $ player .to (c==)
-    if isPlayer then lose
+    if isPlayer then lose $ "You were killed by " ++ other^.name
     else do
         r <- randomR (1, 100)
         when (r > 50) $ dropCorpse c
@@ -353,6 +353,9 @@ dropCorpse c = do
 
 updateCreature :: Creature -> GameState ()
 updateCreature c = creatures %= insert (c^.c_id) c
+
+updateCreatureS :: Creature -> CreatureState a -> GameState ()
+updateCreatureS cs c = updateCreature $ execState c cs
 
 move :: Creature -> Coord -> GameState ()
 move creature offset = do
@@ -392,7 +395,7 @@ dig loc = do
 minusFood :: Int -> GameState ()
 minusFood val = do
     f <- player.food <-= val
-    if f < 1 then lose else return ()
+    if f < 1 then lose "You starved to death." else return ()
 
 canMove :: Coord -> GameState Bool
 canMove loc = do
@@ -424,15 +427,24 @@ playerDropItem item = do
 
     where remove item = P.filter (\i -> (i^.i_id) /= (item^.i_id))
 
-equip :: Item -> GameState ()
-equip i = do
-    let ap = i^.i_attackPower
-        dp = i^.i_defensePower
-    loc <- use $ player.location
-    notify loc $ "You equip the " ++ i^.i_name
-    if ap >= dp
-       then player.weapon .= Just i
-       else player.armor .= Just i
+playerEquip :: Item -> GameState ()
+playerEquip i = do
+    p <- use player
+    equip i p
+
+equip :: Item -> Creature -> GameState ()
+equip i c = do
+    let loc = c^.location
+    act <- action c "equip"
+    notify loc $ act ++ " the " ++ i^.i_name
+    updateCreatureS c $ equip' i
+
+    where equip' i = do
+              let ap = i^.i_attackPower
+                  dp = i^.i_defensePower
+              if ap >= dp
+                 then weapon .= Just i
+                 else armor .= Just i
 
 unequip :: Item -> GameState ()
 unequip i = do
@@ -446,6 +458,8 @@ unequip i = do
 eat :: Item -> GameState ()
 eat i = do
     max <- use $ player.maxFood
+    loc <- use $ player.location
+    notify loc $ "You eat the " ++ i^.i_name
     player.food += (i^.i_foodValue)
     player.food %= \f -> if f > max then max else f
     player.inventory %= L.delete i

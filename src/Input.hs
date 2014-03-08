@@ -14,7 +14,7 @@ import Data.Maybe (isJust, fromJust)
 import UI.HSCurses.Curses as C (Key(..), getCh)
 
 import Game
-import Creature (move, playerPickup, playerDropItem, equip, eat, levelUpActions, playerThrowAttack, playerRangedAttack)
+import Creature (move, playerPickup, playerDropItem, playerEquip, eat, levelUpActions, playerThrowAttack, playerRangedAttack)
 import World (creatureAt, isFloor, floor, tileAt', stairsDown, stairsUp, describe, describeItem, canSee', isCreature)
 
 getInput :: IO Key
@@ -29,9 +29,7 @@ processInputScreen Win key =
     case key of
          _ -> quit
 
-processInputScreen Lose key =
-    case key of
-         _ -> quit
+processInputScreen Lose key = updated .= False
 
 processInputScreen Play key =
     case key of
@@ -58,7 +56,7 @@ processInputScreen Play key =
 
 processInputScreen DropItem key = inventoryScreen key dropItemFilter $ \item -> playerDropItem item
 
-processInputScreen EquipItem key = inventoryScreen key equipItemFilter $ \item -> equip item
+processInputScreen EquipItem key = inventoryScreen key equipItemFilter $ \item -> playerEquip item
 
 processInputScreen EatItem key = inventoryScreen key eatItemFilter $ \item -> eat item
 
@@ -166,7 +164,7 @@ endGame :: GameState ()
 endGame = do
     inv <- use $ player.inventory
     let vi = filter (\i -> i^.i_glyph == '*') inv
-    when (null vi) lose
+    when (null vi) $ lose "You attempt to escape without the idol. The cave entrance collapses on your face."
     when (not $ null vi) win
 
 climb :: Climb -> GameState ()

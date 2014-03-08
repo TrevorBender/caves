@@ -294,6 +294,7 @@ createGame win cstyles = do
                     , _styles = cstyles
                     , _regionMap = emptyRegionMap
                     , _targetLoc = (0,0,0)
+                    , _loseMessage = ""
                     }
     return $ updateNewGame game
 

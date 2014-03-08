@@ -123,6 +123,7 @@ data Game = Game
     , _creatures :: M.Map Int Creature
     , _items :: M.Map Coord Item
     , _messages :: [String]
+    , _loseMessage :: String
     , _curId :: Int     -- for id generation
     , _stdGen :: StdGen -- for random number generation
     , _updated :: Bool
@@ -224,8 +225,12 @@ pushScreen ui = uis %= (++ [ui])
 dropScreen :: GameState ()
 dropScreen = uis %= init
 
-lose :: GameState ()
-lose = updated .= False >> pushScreen Lose
+lose :: String -> GameState ()
+lose msg = do
+    updated .= False
+    loseMessage .= msg
+    messages %= (msg:)
+    pushScreen Lose
 
 quit :: GameState ()
 quit = do

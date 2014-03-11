@@ -20,10 +20,110 @@ import UI.HSCurses.CursesHelper
 import Game
 import World
 import Random
-import Creature (createPlayer, createFungus, createBat, createZombie, createGoblin)
 
 fungiPerLevel = 5
 batsPerLevel = 5
+emptyInventory = []
+
+creatureDefaults :: Creature
+creatureDefaults = Creature { _location = (0,0,0)
+                            , _c_kind = Player
+                            , _c_glyph = 'X'
+                            , _c_style = DefaultStyle
+                            , _c_id = -1
+                            , _name = "<fixme: default>"
+                            , _attack_power = 0
+                            , _defense = 1
+                            , _hp = 1
+                            , _maxHp = 1
+                            , _visionRadius = 20
+                            , _inventory = emptyInventory
+                            , _maxInv = 0
+                            , _weapon = Nothing
+                            , _armor = Nothing
+                            , _food = 0
+                            , _maxFood = 0
+                            , _xp = 0
+                            , _level = 1
+                            , _levelUpgrades = 0
+                            }
+
+createPlayer :: Creature
+createPlayer = creatureDefaults
+    { _c_kind = Player
+    , _c_glyph = '@'
+    , _c_style = PlayerStyle
+    , _c_id = 0
+    , _name = "You"
+    , _attack_power = 10
+    , _defense = 1
+    , _hp = 40
+    , _maxHp = 40
+    , _maxInv = 20
+    , _maxFood = 1000
+    , _food = div 1000 3 * 2
+    }
+
+creature :: Creature -> Int -> GameState Creature
+creature constructor depth = do
+    loc <- findEmptyLocation depth
+    thisId <- nextInt
+    return $ constructor { _location = loc , _c_id = thisId }
+
+createFungus :: Int -> GameState Creature
+createFungus = creature creatureDefaults
+    { _c_kind = Fungus
+    , _c_glyph = 'f'
+    , _c_style = FungusStyle
+    , _name = "lichen"
+    , _defense = 1
+    , _hp = 1
+    , _maxHp = 1
+    }
+
+createBat :: Int -> GameState Creature
+createBat = creature creatureDefaults
+        { _c_kind = Bat
+        , _c_glyph = 'b'
+        , _c_style = BatStyle
+        , _name = "bat"
+        , _attack_power = 4
+        , _defense = 4
+        , _hp = 5
+        , _maxHp = 5
+        }
+
+createZombie :: Int -> GameState Creature
+createZombie = creature creatureDefaults
+    { _c_kind = Zombie
+    , _c_glyph = 'z'
+    , _c_style = ZombieStyle
+    , _name = "zombie"
+    , _attack_power = 15
+    , _defense = 5
+    , _hp = 15
+    , _maxHp = 15
+    , _visionRadius = 15
+    }
+
+createGoblin :: Int -> GameState Creature
+createGoblin d = do
+    g <- creature creatureDefaults
+        { _c_kind = Goblin
+        , _c_glyph = 'g'
+        , _c_style = ZombieStyle
+        , _name = "goblin"
+        , _attack_power = 20
+        , _defense = 10
+        , _hp = 20
+        , _maxHp = 20
+        , _visionRadius = 20
+        , _maxInv = 1
+        } d
+    w <- randomWeapon 0
+    return $ g {
+        _weapon = Just w
+        }
 
 populateGame :: GameState ()
 populateGame = do
@@ -205,6 +305,8 @@ cleanUp = regionMap .= emptyRegionMap
 updatePlayerLocation :: GameState ()
 updatePlayerLocation = do
     loc <- findEmptyLocation 0
+    {-bow <- createBow 0-}
+    {-items %= insert loc bow-}
     player.location .= loc
     targetLoc .= loc
 

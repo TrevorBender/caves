@@ -9,6 +9,7 @@ import Control.Lens
 import Control.Monad (when)
 import Control.Monad.State.Strict (get, execState)
 import Data.Array
+import Data.List as L (delete)
 import Data.Map.Strict as M (insert)
 import Data.Maybe (isJust, fromJust)
 import UI.HSCurses.Curses as C (Key(..), getCh)
@@ -86,12 +87,10 @@ processInputScreen ThrowItem key = inventoryScreen key throwItemFilter $ \item -
         if isC then do
             Just c <- creatureAt tl
             playerThrowAttack item c
-            player.inventory %= remove item
+            player.inventory %= delete item
         else do
-            player.inventory %= remove item
+            player.inventory %= delete item
             items %= insert tl (item { _i_location = tl })
-
-    where remove item = filter (\i -> (i^.i_id) /= (item^.i_id))
 
 processInputScreen Throw key = targetScreen key $ do
     pushScreen ThrowItem

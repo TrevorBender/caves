@@ -6,11 +6,6 @@ module Creature
     , creatureAttack
     , creatureDefense
     , playerEquip
-    , createPlayer
-    , createFungus
-    , createBat
-    , createZombie
-    , createGoblin
     , eat
     , levelUpStrings
     , levelUpActions
@@ -40,101 +35,6 @@ import World ( isFloor, isCreature
              )
 import Line (line)
 
-emptyInventory = []
-
-creatureDefaults :: Creature
-creatureDefaults = Creature { _location = (0,0,0)
-                            , _c_kind = Player
-                            , _c_glyph = 'X'
-                            , _c_style = DefaultStyle
-                            , _c_id = -1
-                            , _name = "<fixme: default>"
-                            , _attack_power = 0
-                            , _defense = 1
-                            , _hp = 1
-                            , _maxHp = 1
-                            , _visionRadius = 20
-                            , _inventory = emptyInventory
-                            , _maxInv = 0
-                            , _weapon = Nothing
-                            , _armor = Nothing
-                            , _food = 0
-                            , _maxFood = 0
-                            , _xp = 0
-                            , _level = 1
-                            , _levelUpgrades = 0
-                            }
-
-createPlayer :: Creature
-createPlayer = creatureDefaults
-    { _c_kind = Player
-    , _c_glyph = '@'
-    , _c_style = PlayerStyle
-    , _c_id = 0
-    , _name = "You"
-    , _attack_power = 10
-    , _defense = 1
-    , _hp = 40
-    , _maxHp = 40
-    , _maxInv = 20
-    , _maxFood = 1000
-    , _food = div 1000 3 * 2
-    }
-
-creature :: Creature -> Int -> GameState Creature
-creature constructor depth = do
-    loc <- findEmptyLocation depth
-    thisId <- nextInt
-    return $ constructor { _location = loc , _c_id = thisId }
-
-createFungus :: Int -> GameState Creature
-createFungus = creature creatureDefaults
-    { _c_kind = Fungus
-    , _c_glyph = 'f'
-    , _c_style = FungusStyle
-    , _name = "lichen"
-    , _defense = 1
-    , _hp = 1
-    , _maxHp = 1
-    }
-
-createBat :: Int -> GameState Creature
-createBat = creature creatureDefaults
-        { _c_kind = Bat
-        , _c_glyph = 'b'
-        , _c_style = BatStyle
-        , _name = "bat"
-        , _attack_power = 4
-        , _defense = 4
-        , _hp = 5
-        , _maxHp = 5
-        }
-
-createZombie :: Int -> GameState Creature
-createZombie = creature creatureDefaults
-    { _c_kind = Zombie
-    , _c_glyph = 'z'
-    , _c_style = ZombieStyle
-    , _name = "zombie"
-    , _attack_power = 15
-    , _defense = 5
-    , _hp = 15
-    , _maxHp = 15
-    , _visionRadius = 15
-    }
-
-createGoblin :: Int -> GameState Creature
-createGoblin = creature creatureDefaults
-    { _c_kind = Goblin
-    , _c_glyph = 'g'
-    , _c_style = ZombieStyle
-    , _name = "goblin"
-    , _attack_power = 20
-    , _defense = 10
-    , _hp = 20
-    , _maxHp = 20
-    , _visionRadius = 20
-    }
 
 creatureTick :: Creature -> GameState ()
 creatureTick c = creatureTick' (c^.c_kind) c
@@ -163,8 +63,37 @@ creatureTick' Zombie z = do
 creatureTick' Goblin g = do
     pl <- use $ player.location
     playerVisible <- canSee' pl g
-    if playerVisible then hunt g else wander g
+    canPickup <- creatureCanPickup g
+    let canEquip = not (P.null (g^.inventory))
+    when (canEquip) $ equip (head $ g^.inventory) g
+    if playerVisible then hunt g
+    else if canPickup then do
+        pickup g
+    else wander g
     autoLevelUp g
+
+creatureCanPickup :: Creature -> GameState Bool
+creatureCanPickup c = do
+    let loc = c^.location
+    mi <- use $ items .to (M.lookup loc)
+    return $ case mi of
+                  Nothing -> False
+                  Just i -> isValuable i
+
+    where isValuable i = i^.i_attackPower > 0 || i^.i_defensePower > 0
+
+pickup :: Creature -> GameState ()
+pickup c = do
+    pl <- use $ player.location
+    let loc = c^.location
+        fullInv = inventoryFull c
+    itemThere <- isItem loc
+    when (not fullInv && itemThere) $ do
+        item <- itemAt loc
+        removeItemFromWorld loc
+        updateCreatureS c $ inventory %= (item:)
+        act <- action c "pickup"
+        notify pl $ " a " ++ (item^.i_name)
 
 hunt :: Creature -> GameState ()
 hunt c = do
@@ -173,7 +102,6 @@ hunt c = do
         ln = line (x,y) (px, py)
         (x', y') = ln !! 1
     moveAbs c (x',y',pz)
-
 
 duplicate :: Creature -> GameState ()
 duplicate c = do
@@ -320,10 +248,8 @@ attack creature other = do
 die :: Creature -> Creature -> GameState ()
 die c other = do
     isPlayer <- use $ player .to (c==)
-    if isPlayer then lose $ "You were killed by " ++ other^.name
+    if isPlayer then lose $ "You were killed by a " ++ other^.name
     else do
-        r <- randomR (1, 100)
-        when (r > 50) $ dropCorpse c
         creatures %= M.delete (c^.c_id)
         let msg name = "The " ++ name ++ " dies."
         notify (c^.location) $ msg (c^.name)
@@ -336,20 +262,28 @@ foodValue c =
 
 dropCorpse :: Creature -> GameState ()
 dropCorpse c = do
-    id <- nextInt
-    let fv = foodValue c
-        corpse = Item { _i_name = (c^.name) ++ " corpse"
-                      , _i_glyph = 'c'
-                      , _i_style = c^.c_style
-                      , _i_id = id
-                      , _i_location = c^.location
-                      , _i_attackPower = 0
-                      , _i_defensePower = 0
-                      , _i_foodValue = fv
-                      , _i_throwAttackPower = 0
-                      , _i_rangedAttackPower = 0
-                      }
-    items %= insert (corpse^.i_location) corpse
+    if hasItem c then dropItem c else dropCorpse' c
+    where hasItem c = not $ P.null $ c^.inventory
+          dropItem c = do
+              let item = c^.inventory .to head
+              creatureDropItem item c
+          dropCorpse' c = do
+            r <- randomR (1, 100)
+            when (r > 50) $ do
+                id <- nextInt
+                let fv = foodValue c
+                    corpse = Item { _i_name = (c^.name) ++ " corpse"
+                                  , _i_glyph = 'c'
+                                  , _i_style = c^.c_style
+                                  , _i_id = id
+                                  , _i_location = c^.location
+                                  , _i_attackPower = 0
+                                  , _i_defensePower = 0
+                                  , _i_foodValue = fv
+                                  , _i_throwAttackPower = 0
+                                  , _i_rangedAttackPower = 0
+                                  }
+                items %= insert (corpse^.i_location) corpse
 
 updateCreature :: Creature -> GameState ()
 updateCreature c = creatures %= insert (c^.c_id) c
@@ -408,24 +342,35 @@ inventoryFull c = length (c^.inventory) == c^.maxInv
 playerPickup :: GameState ()
 playerPickup = do
     c <- use player
+    pickup c
+
+creatureDropItem :: Item -> Creature -> GameState ()
+creatureDropItem item c = do
     let loc = c^.location
-        fullInv = inventoryFull c
-    itemThere <- isItem loc
-    when (not fullInv && itemThere) $ do
-        item <- itemAt loc
-        removeItemFromWorld loc
-        player.inventory %= (item:)
-        notify loc $ "You pickup a " ++ (item^.i_name)
+    updateCreatureS c $ do
+        inventory %= L.delete item
+        creatureUnequip item
+    act <- action c "drop"
+    notify loc $ act ++ " the " ++ (item^.i_name)
+    items %= insert loc (item {_i_location = loc})
+
+creatureUnequip :: Item -> CreatureState ()
+creatureUnequip i = do
+    mweap <- use $ weapon
+    marm <- use $ armor
+    let isWeap = isJust mweap && fromJust mweap == i
+        isArm = isJust marm && fromJust marm == i
+    when isWeap $ weapon .= Nothing
+    when isArm $ armor .= Nothing
+
 
 playerDropItem :: Item -> GameState ()
 playerDropItem item = do
     loc <- use $ player.location
-    player.inventory %= (remove item)
+    player.inventory %= L.delete item
     notify loc $ "You drop the " ++ (item^.i_name)
     items %= insert loc (item {_i_location = loc})
     unequip item
-
-    where remove item = P.filter (\i -> (i^.i_id) /= (item^.i_id))
 
 playerEquip :: Item -> GameState ()
 playerEquip i = do

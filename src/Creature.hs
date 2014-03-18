@@ -300,25 +300,20 @@ move creature offset = do
         loc = move origin
     moveAbs creature loc
 
--- TODO refactor deep nesting
 moveAbs :: Creature -> Coord -> GameState ()
-moveAbs creature loc = do
-    when (inBounds loc) $ do
-        mc <- creatureAt loc
-        canMove <- canMove loc
-        p <- use player
-        case mc of
-             Just other -> attack creature other
-             Nothing | creature == p  ->
-                    if canMove
-                       then do
-                           (player.location) .= loc
-                           targetLoc .= loc
-                       else dig loc
-                     | canMove -> creatures %= adjust (location .~ loc) (creature^.c_id)
-                     | otherwise ->  return ()
-    return ()
+moveAbs creature loc = when (inBounds loc) $ do
+    mc <- creatureAt loc
+    canMove <- canMove loc
+    p <- use player
+    case mc of
+         Just other -> attack creature other
+         Nothing | creature == p  -> if canMove then updateLoc loc else dig loc
+                 | canMove -> creatures %= adjust (location .~ loc) (creature^.c_id)
+                 | otherwise ->  return ()
 
+    where updateLoc loc = do
+              player.location .= loc
+              targetLoc .= loc
 
 dig :: Coord -> GameState ()
 dig loc = do

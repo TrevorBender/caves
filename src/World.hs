@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module World
     ( isFloor , floor , stairsDown , stairsUp , wall , unknownTile
     , isCreature , creatureAt
@@ -15,6 +13,7 @@ module World
 
 import Prelude hiding (floor)
 
+import Control.Arrow ((&&&))
 import Control.Lens
 import Control.Monad.State.Strict (State, get, put, execState)
 import Data.Array as A
@@ -54,11 +53,11 @@ updateVisibleTiles = do
     game <- get
     let (_,_,z) = game^.player.location
         visibleIds = filter (\loc -> canSee game loc (game^.player)) [(x,y,z) | z <- [0..(gameDepth-1)], y <- [0..(gameHeight-1)], x <- [0..(gameWidth-1)]]
-        updates = map (\loc -> (reverseCoord loc, tileAt game loc)) visibleIds
+        updates = map (reverseCoord &&& tileAt game) visibleIds
     visibleWorld %= (// updates)
 
 visibleTileAt :: Game -> Coord -> Tile
-visibleTileAt game loc = if inBounds loc then (game^.visibleWorld) A.! (reverseCoord loc) else outOfBounds
+visibleTileAt game loc = if inBounds loc then (game^.visibleWorld) A.! reverseCoord loc else outOfBounds
 
 seeThrough :: Game -> Coord -> Bool
 seeThrough game = (`elem` [Floor, StairsUp, StairsDown]) . (^.kind) . tileAt game
@@ -72,7 +71,7 @@ tileAt :: Game -> Coord -> Tile
 tileAt game = tileAtWorld (game^.world)
 
 tileAtWorld :: GameWorld -> Coord -> Tile
-tileAtWorld world loc = if inBounds loc then world A.! (reverseCoord loc) else outOfBounds
+tileAtWorld world loc = if inBounds loc then world A.! reverseCoord loc else outOfBounds
 
 creatureAt :: Coord -> GameState (Maybe Creature)
 creatureAt loc = do
@@ -116,14 +115,14 @@ smoothWorld = do
     game <- get
     let lvl = game^.world
         ixs = A.indices lvl
-        tiles = map (newElem lvl) (map reverseCoord ixs)
+        tiles = map (newElem lvl . reverseCoord) ixs
         world' = list2GameWorld tiles
     world .= world'
     where newElem :: GameWorld -> Coord -> Tile
           newElem world ix = if floors >= walls then floor else wall
-              where neighbors = (tileAtWorld world ix) : neighbors8 ix world
+              where neighbors = tileAtWorld world ix : neighbors8 ix world
                     floors = length $ filter (== floor) neighbors
-                    walls = (length neighbors) - floors
+                    walls = length neighbors - floors
 
 isFloor :: Coord -> GameState Bool
 isFloor loc = do
@@ -146,10 +145,10 @@ isEmpty loc = do
     tileOK <- isFloor loc
     hasCreature <- isCreature loc
     hasItem <- isItem loc
-    return $ tileOK && (not hasCreature) && not hasItem
+    return $ tileOK && not hasCreature && not hasItem
 
 removeItemFromWorld :: Coord -> GameState ()
-removeItemFromWorld loc = items %= (delete loc)
+removeItemFromWorld loc = items %= delete loc
 
 describe :: Coord -> GameState String
 describe loc = do
@@ -164,7 +163,7 @@ describe loc = do
     else if isI then do
         i <- itemAt loc
         return $ describeItem i
-    else do
+    else
         return $ "It's a " ++ t^.t_description
 
 describeItem :: Item -> String

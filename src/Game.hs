@@ -94,7 +94,6 @@ makeLenses ''Creature
 instance Eq Creature where
     (==) a b = a^.c_id == b^.c_id
 
-type CreatureState = State Creature
 
 data TileKind = Floor | Wall | StairsUp | StairsDown | Unknown deriving (Eq, Show)
 
@@ -138,11 +137,12 @@ makeLenses ''Game
 -- identical function signature:
 -- player :: Functor f => (Creature -> f Creature) -> Game -> f Game
 player :: Lens' Game Creature
-player f game = 
-    let updatePlayer game p' = (creatures %~ (M.insert 0 p')) game
+player f game =
+    let updatePlayer game p' = creatures %~ M.insert 0 p' $ game
     in fmap (updatePlayer game) (f (_creatures game M.! 0))
 
 type GameState = State Game
+type CreatureState = State Creature
 
 nextInt :: GameState Int
 nextInt = curId <+= 1
@@ -155,7 +155,7 @@ ui = use $ uis.to last
 
 splitBy :: Int -> [a] -> [[a]]
 splitBy width [] = []
-splitBy width xs = (take width xs) : (splitBy width (drop width xs))
+splitBy width xs = take width xs : splitBy width (drop width xs)
 
 data Climb = Up | Down deriving (Eq)
 
@@ -167,10 +167,10 @@ offsetDir N = (0, -1, 0)
 offsetDir E = (1,  0, 0)
 offsetDir S = (0,  1, 0)
 offsetDir W = (-1, 0, 0)
-offsetDir NE = (offsetDir N) <+> (offsetDir E)
-offsetDir SE = (offsetDir S) <+> (offsetDir E)
-offsetDir SW = (offsetDir S) <+> (offsetDir W)
-offsetDir NW = (offsetDir N) <+> (offsetDir W)
+offsetDir NE = offsetDir N <+> offsetDir E
+offsetDir SE = offsetDir S <+> offsetDir E
+offsetDir SW = offsetDir S <+> offsetDir W
+offsetDir NW = offsetDir N <+> offsetDir W
 
 offsetClimb :: Climb -> Coord
 offsetClimb Up   = (0, 0, -1)

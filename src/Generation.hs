@@ -127,8 +127,8 @@ createGoblin d = do
 
 populateGame :: GameState ()
 populateGame = do
-    populateCreature createFungus (\_ -> fungiPerLevel)
-    populateCreature createBat (\_ -> batsPerLevel)
+    populateCreature createFungus (const fungiPerLevel)
+    populateCreature createBat (const batsPerLevel)
     populateCreature createZombie id
     populateCreature createGoblin (\depth -> if depth < 2 then 0 else depth - 1)
 
@@ -136,7 +136,7 @@ populateGame = do
           populateCreature createCreature cPerLevel = do
               cs <- forM [0..(gameDepth-1)] $ \depth -> replicateM (cPerLevel depth) $ createCreature depth
               let cMap = M.fromList $ map (\c -> (c^.c_id, c)) (concat cs)
-              creatures %= (M.union cMap)
+              creatures %= M.union cMap
 
 createVictoryStairs :: GameState ()
 createVictoryStairs = do
@@ -149,21 +149,21 @@ createVictoryStairs = do
 createStairs :: GameState ()
 createStairs = do
     (_,rMap,nMap) <- use regionMap
-    let rNums = M.keys $ M.filter (\locs -> any (\(_,_,z) -> z < gameDepth - 1) locs) nMap
+    let rNums = M.keys $ M.filter (any (\(_,_,z) -> z < gameDepth - 1)) nMap
     forM_ rNums connectRegionsDown
 
 connectRegionsDown :: Int -> GameState ()
 connectRegionsDown num = do
     (_,rMap,nMap) <- use regionMap
     let (_,_,depth) = head $ nMap ! num
-        rBelow = M.keys $ M.filter (\locs -> any (\(_,_,z) -> z == depth + 1) locs) nMap
+        rBelow = M.keys $ M.filter (any (\(_,_,z) -> z == depth + 1)) nMap
     forM_ rBelow (connectRegionDown depth num)
 
 connectRegionDown :: Int -> Int -> Int -> GameState ()
 connectRegionDown depth r1 r2 = do
     (_,_,nMap) <- use regionMap
     let adjusted = map (\(x,y,z) -> (x,y,z-1)) (nMap ! r2)
-        overlap = intersect (nMap ! r1) adjusted
+        overlap = (nMap ! r1) `intersect` adjusted
     unless (null overlap) $ replicateM_ (ceiling $ fromIntegral (length overlap) / 250) $ do
         loc <- randomL overlap
         createStairDown loc
@@ -194,21 +194,18 @@ defaultItem = Item { _i_location = (0,0,0)
                    , _i_rangedAttackPower = 0
                    }
 
-createRock :: Int -> GameState Item
 createRock = item defaultItem
     { _i_name = "rock"
     , _i_glyph = ','
     , _i_throwAttackPower = 1
     }
 
-createVictoryItem :: GameState Item
 createVictoryItem = item defaultItem
     { _i_name = "idol"
     , _i_style = VictoryItemStyle
     , _i_glyph = '*'
     } (gameDepth-1)
 
-createDagger :: Int -> GameState Item
 createDagger = item defaultItem
     { _i_name = "dagger"
     , _i_glyph = ')'
@@ -216,7 +213,6 @@ createDagger = item defaultItem
     , _i_throwAttackPower = 5
     }
 
-createSword :: Int -> GameState Item
 createSword = item defaultItem
     { _i_name = "sword"
     , _i_style = SwordStyle
@@ -225,7 +221,6 @@ createSword = item defaultItem
     , _i_throwAttackPower = 10
     }
 
-createStaff :: Int -> GameState Item
 createStaff = item defaultItem
     { _i_name = "staff"
     , _i_style = StaffStyle
@@ -235,7 +230,6 @@ createStaff = item defaultItem
     , _i_throwAttackPower = 5
     }
 
-createBow :: Int -> GameState Item
 createBow = item defaultItem
     { _i_name = "bow"
     , _i_style = ZombieStyle
@@ -244,7 +238,6 @@ createBow = item defaultItem
     , _i_rangedAttackPower = 5
     }
 
-createTunic :: Int -> GameState Item
 createTunic = item defaultItem
     { _i_name = "tunic"
     , _i_style = StaffStyle
@@ -252,7 +245,6 @@ createTunic = item defaultItem
     , _i_defensePower = 2
     }
 
-createChainmail :: Int -> GameState Item
 createChainmail = item defaultItem
     { _i_name = "chainmail"
     , _i_style = SwordStyle
@@ -260,36 +252,37 @@ createChainmail = item defaultItem
     , _i_defensePower = 4
     }
 
-createPlatemail :: Int -> GameState Item
 createPlatemail = item defaultItem
     { _i_name = "platemail"
     , _i_glyph = '['
     , _i_defensePower = 4
     }
 
-createBread :: Int -> GameState Item
 createBread = item defaultItem
     { _i_name = "bread"
     , _i_glyph = '8'
     , _i_foodValue = 200
     }
 
-randomWeapon :: Int -> GameState Item
 randomWeapon depth = do
     cf <- randomL [ createDagger, createSword, createStaff, createBow ]
     cf depth
 
-randomArmor :: Int -> GameState Item
 randomArmor depth = do
     cf <- randomL [ createTunic, createChainmail, createPlatemail ]
     cf depth
 
+createNewPotionOfHealth = item defaultItem
+    { _i_name = "potion of health"
+    , _i_glyph = '!'
+    }
+
 createItems :: GameState ()
 createItems = do
-    createItem createRock (\_ -> div (gameWidth * gameHeight) 50)
-    createItem randomWeapon (\_ -> 2)
-    createItem randomArmor (\_ -> 2)
-    createItem createBread (\_ -> 1)
+    createItem createRock (const $ div (gameWidth * gameHeight) 50)
+    createItem randomWeapon (const 2)
+    createItem randomArmor (const 2)
+    createItem createBread (const 1)
 
     victoryItem <- createVictoryItem
     items %= M.insert (victoryItem^.i_location) victoryItem
@@ -332,11 +325,11 @@ fillRegion loc num world = execState (dfs' loc world) (num, M.empty, M.empty)
           dfs' loc world = do
               (num, regionMap, nMap) <- get
               let neighbors = neighborsCoords loc
-                  neighbors' = P.filter (\loc -> inBounds loc && (tileAtWorld world loc)^.kind == Floor) neighbors
-                  newNeighbors = P.filter (\loc -> notMember loc regionMap) neighbors'
+                  neighbors' = P.filter (\loc -> inBounds loc && tileAtWorld world loc ^. kind == Floor) neighbors
+                  newNeighbors = P.filter (`notMember` regionMap) neighbors'
                   updateNumMap loc (Just xs) = Just$ loc:xs
                   updateNumMap loc Nothing = Just [loc]
-              forM_ newNeighbors $ \loc -> modify $ \(num, rMap, nMap) -> (num, insert loc (Just $ num) rMap, M.alter (updateNumMap loc) num nMap)
+              forM_ newNeighbors $ \loc -> modify $ \(num, rMap, nMap) -> (num, insert loc (Just num) rMap, M.alter (updateNumMap loc) num nMap)
               forM_ newNeighbors $ \loc -> dfs' loc world
 
 removeSmallRegions :: GameState ()
@@ -346,7 +339,7 @@ removeSmallRegions = do
     forM_ (M.keys smallRegions) removeSmallRegion
 
 deleteAll :: [Coord] -> Map Coord (Maybe Int) -> Map Coord (Maybe Int)
-deleteAll ks = mapWithKey (\k x -> if elem k ks then Nothing else x)
+deleteAll ks = mapWithKey (\k x -> if k `elem` ks then Nothing else x)
 
 removeSmallRegion :: Int -> GameState ()
 removeSmallRegion num = do
@@ -372,7 +365,7 @@ createRegionMap = do
           handleFloor world loc num rMap nMap = if member loc rMap
                                                    then (num, rMap, nMap)
                                                    else let (_,rMap',nMap') = fillRegion loc num world
-                                                            in (num+1, M.union rMap rMap', M.union nMap nMap')
+                                                            in (num+1, rMap `M.union` rMap', nMap `M.union` nMap')
 
 -- should this be a Maybe
 emptyRegionMap = (0, M.empty, M.empty)

@@ -1,11 +1,9 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Main where
 
 import Prelude hiding (floor)
 
 import Control.Lens
-import Control.Monad (forM_, when)
+import Control.Monad (forM_, when, unless)
 import Control.Monad.State.Strict (execState, get, execStateT)
 import Data.Map.Strict as M (Map, elems, fromAscList, keys)
 import System.IO (hGetEcho, hSetEcho, stdin)
@@ -38,9 +36,7 @@ gameLoop game = do
     game' <- execStateT drawGame game
     ch <- getInput
     let game'' = (execState $ processInput ch >> gameChanged >>= nehw tick) game'
-    if emptyUis game''
-       then return ()
-       else gameLoop game''
+    unless (emptyUis game'') $ gameLoop game''
 
 main :: IO ()
 main = do

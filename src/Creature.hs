@@ -65,9 +65,9 @@ creatureTick' Goblin g = do
     playerVisible <- canSee' pl g
     canPickup <- creatureCanPickup g
     let canEquip = not (P.null (g^.inventory))
-    when (canEquip) $ equip (head $ g^.inventory) g
+    when canEquip $ equip (head $ g^.inventory) g
     if playerVisible then hunt g
-    else if canPickup then do
+    else if canPickup then
         pickup g
     else wander g
     autoLevelUp g
@@ -116,7 +116,7 @@ duplicate c = do
         when (isFloor && not isCreature && not isItem) $ do
             id <- nextInt
             let child = c { _c_id = id , _location = loc' }
-            creatures %= (insert (child^.c_id) child)
+            creatures %= insert (child^.c_id) child
 
 
 upgradeMaxHp = do
@@ -213,7 +213,7 @@ creatureDefense :: Creature -> Int
 creatureDefense c = c^.defense + itemDefensePower c
 
 commonAttack :: Creature -> Creature -> Int -> GameState ()
-commonAttack creature other maxAttack = do
+commonAttack creature other maxAttack =
     when (maxAttack > 0) $ do
         attackValue <- randomR (1, maxAttack)
         let other' = (hp -~ attackValue) other
@@ -261,12 +261,14 @@ foodValue c =
         in fv
 
 dropCorpse :: Creature -> GameState ()
-dropCorpse c = do
-    if hasItem c then dropItem c else dropCorpse' c
+dropCorpse c = if hasItem c then dropItem c else dropCorpse' c
+
     where hasItem c = not $ P.null $ c^.inventory
+
           dropItem c = do
               let item = c^.inventory .to head
               creatureDropItem item c
+
           dropCorpse' c = do
             r <- randomR (1, 100)
             when (r > 50) $ do
@@ -307,16 +309,14 @@ moveAbs creature loc = do
         p <- use player
         case mc of
              Just other -> attack creature other
-             Nothing ->
-                 if creature == p then
+             Nothing | creature == p  ->
                     if canMove
                        then do
                            (player.location) .= loc
                            targetLoc .= loc
                        else dig loc
-                    else if canMove
-                       then creatures %= (adjust (location .~ loc) (creature^.c_id))
-                       else return ()
+                     | canMove -> creatures %= adjust (location .~ loc) (creature^.c_id)
+                     | otherwise ->  return ()
     return ()
 
 
@@ -324,12 +324,12 @@ dig :: Coord -> GameState ()
 dig loc = do
     world %= (//[(reverseCoord loc, floor)])
     minusFood 10
-    notify loc $ "You dig."
+    notify loc "You dig."
 
 minusFood :: Int -> GameState ()
 minusFood val = do
     f <- player.food <-= val
-    if f < 1 then lose "You starved to death." else return ()
+    when (f < 1) $ lose "You starved to death."
 
 canMove :: Coord -> GameState Bool
 canMove loc = do
@@ -356,10 +356,10 @@ creatureDropItem item c = do
 
 creatureUnequip :: Item -> CreatureState ()
 creatureUnequip i = do
-    mweap <- use $ weapon
-    marm <- use $ armor
-    let isWeap = isJust mweap && fromJust mweap == i
-        isArm = isJust marm && fromJust marm == i
+    mweap <- use weapon
+    marm <- use armor
+    let isWeap = mweap == Just i
+        isArm = marm == Just i
     when isWeap $ weapon .= Nothing
     when isArm $ armor .= Nothing
 
@@ -395,8 +395,8 @@ unequip :: Item -> GameState ()
 unequip i = do
     mweap <- use $ player.weapon
     marm <- use $ player.armor
-    let isWeap = isJust mweap && fromJust mweap == i
-        isArm = isJust marm && fromJust marm == i
+    let isWeap = mweap == Just i
+        isArm = marm == Just i
     when isWeap $ player.weapon .= Nothing
     when isArm $ player.armor .= Nothing
 

@@ -21,6 +21,6 @@ randomR range = do
 randomL :: [a] -> GameState a
 randomL xs = do
     g  <- use stdGen
-    let (ix, g') = R.randomR (0,(length xs) - 1) g
+    let (ix, g') = R.randomR (0, length xs - 1) g
     stdGen .= g'
     return $ xs !! ix

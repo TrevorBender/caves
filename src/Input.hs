@@ -6,7 +6,7 @@ module Input
 import Prelude hiding (floor)
 
 import Control.Lens
-import Control.Monad (when)
+import Control.Monad (when, unless)
 import Control.Monad.State.Strict (get, execState)
 import Data.Array
 import Data.List as L (delete)
@@ -22,13 +22,9 @@ getInput :: IO Key
 getInput = getCh
 
 processInputScreen :: Screen -> Char -> GameState ()
-processInputScreen Start key =
-    case key of
-         _ -> uis .= [Play]
+processInputScreen Start key = uis .= [Play]
 
-processInputScreen Win key =
-    case key of
-         _ -> quit
+processInputScreen Win key = quit
 
 processInputScreen Lose key = updated .= False
 
@@ -78,11 +74,8 @@ processInputScreen Look key = targetScreen key $ do
     tl <- use targetLoc
     describe tl >>= notify pl
 
-processInputScreen ThrowItem key = inventoryScreen key throwItemFilter $ \item -> do
-    tl <- use targetLoc
-    p <- use player
-    isVis <- canSee' tl p
-    when isVis $ do
+processInputScreen ThrowItem key = inventoryScreen key throwItemFilter $ \item ->
+    whenPlayerCanSee $ \p tl -> do
         isC <- isCreature tl
         if isC then do
             Just c <- creatureAt tl
@@ -98,26 +91,28 @@ processInputScreen Throw key = targetScreen key $ do
 
 processInputScreen FireWeapon key = targetScreen key $ do
     updated .= True
+    whenPlayerCanSee $ \p tl -> do
+        isC <- isCreature tl
+        when isC $ do
+            Just c <- creatureAt tl
+            playerRangedAttack c
+
+
+whenPlayerCanSee :: (Creature -> Coord -> GameState ()) -> GameState ()
+whenPlayerCanSee action = do
     tl <- use targetLoc
     p <- use player
     isVis <- canSee' tl p
-    when isVis $ do
-        isC <- isCreature tl
-        if isC then do
-                    Just c <- creatureAt tl
-                    playerRangedAttack c
-               else return ()
+    when isVis $ action p tl
 
 fireWeaponScreen :: GameState ()
 fireWeaponScreen = do
     updated .= False
     mw <- use $ player.weapon
-    if isJust mw then do
+    when (isJust mw) $ do
         let Just w = mw
             ra = w^.i_rangedAttackPower
-        when (ra /= 0) $ do
-            pushScreen FireWeapon
-    else return ()
+        when (ra /= 0) $ pushScreen FireWeapon
 
 targetScreen :: Char -> GameState () -> GameState ()
 targetScreen key targetAction = do
@@ -164,7 +159,7 @@ endGame = do
     inv <- use $ player.inventory
     let vi = filter (\i -> i^.i_glyph == '*') inv
     when (null vi) $ lose "You attempt to escape without the idol. The cave entrance collapses on your face."
-    when (not $ null vi) win
+    unless (null vi) win
 
 climb :: Climb -> GameState ()
 climb dir = do
@@ -174,7 +169,7 @@ climb dir = do
     when (tile == stairsDown && dir == Down) $
         move p $ offsetClimb dir
     when (tile == stairsUp && dir == Up) $ do
-        when (depth == 0) $
+        when (depth == 0)
             endGame
         when (depth /= 0) $
             move p $ offsetClimb dir

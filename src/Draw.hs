@@ -124,7 +124,7 @@ drawInventoryScreen str filt = do
 
 itemStrings :: (Item -> Bool) -> [Maybe Item] -> [Item] -> [String]
 itemStrings filt mes = map i2s . P.filter (\(_,i) -> filt i) . zip ['a'..]
-    where i2s (c, i) = c : (" - " ++ (i^.i_name) ++ if elem (Just i) mes then " *" else "" )
+    where i2s (c, i) = c : (" - " ++ (i^.i_name) ++ if Just i `elem` mes then " *" else "" )
 
 drawItem :: Item -> GameIOState ()
 drawItem item = do
@@ -151,7 +151,7 @@ drawItems = do
 drawMessages :: GameIOState ()
 drawMessages = do
     ms <- use messages
-    forM_ (zip [1..] (reverse $ ms)) $ \(i, msg) -> drawStr (gameHeight + i) 5 msg
+    forM_ (zip [1..] (reverse ms)) $ \(i, msg) -> drawStr (gameHeight + i) 5 msg
     messages .= []
 
 drawHud :: GameIOState ()
@@ -190,7 +190,7 @@ drawCreatures :: GameIOState ()
 drawCreatures = do
     p <- use player
     cs <- use creatures
-    forM_ (M.elems $ M.filter (sameDepth p) $ cs) drawCreature
+    forM_ (M.elems $ M.filter (sameDepth p) cs) drawCreature
     where sameDepth p c = depth == playerDepth
             where (_,_,depth) = c^.location
                   (_,_,playerDepth) = p^.location
@@ -203,9 +203,11 @@ block2d (xOffset,width) (yOffset,height) xs = map (Draw.block xOffset width) (Dr
 
 toChar :: Int -> String
 toChar i = [ch]
-    where ch = if i < 10 then intToDigit i else
-               if i < 10 + 25 then chr $ i - 10 + ord 'A' else
-               if i < 10 + 25 + 25 then chr $ i -10 - 25 + ord 'a' else '*'
+    where ch
+            | i < 10           = intToDigit i
+            | i < 10 + 25      = chr $ i - 10 + ord 'A'
+            | i < 10 + 25 + 25 = chr $ i -10 - 25 + ord 'a'
+            | otherwise        = '*'
 
 drawRegionNumbers :: GameIOState ()
 drawRegionNumbers = do
@@ -219,7 +221,7 @@ drawRegionNumbers = do
         regionAssocs' = map (\((x,y,z),Just r) -> ((x-ox, y-oy), r)) regionAssocs
     forM_ regionAssocs' $ \((x,y), num) -> do
         inBounds <- inScreenBounds x y
-        if inBounds then drawStr y x (toChar num) else return ()
+        when inBounds $ drawStr y x (toChar num)
 
 drawLevel :: GameIOState ()
 drawLevel = do
@@ -229,7 +231,7 @@ drawLevel = do
     let cstyle = getStyle OutOfSiteStyle game
     liftIO $ setStyle cstyle
     let (_,_,depth) = game^.player.location
-        lvl2d = (splitBy (gameWidth * gameHeight) $ A.elems $ game^.visibleWorld) !! depth
+        lvl2d = splitBy (gameWidth * gameHeight) (A.elems $ game^.visibleWorld) !! depth
         rows = splitBy gameWidth lvl2d
         blocks (ox,oy) (sh,sw) = block2d (ox, sw) (oy, sh) rows
         lvl offsets sSize = map row2str (blocks offsets sSize)

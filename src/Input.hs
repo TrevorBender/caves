@@ -15,7 +15,7 @@ import Data.Maybe (isJust, fromJust)
 import UI.HSCurses.Curses as C (Key(..), getCh)
 
 import Game
-import Creature (move, playerPickup, playerDropItem, playerEquip, eat, levelUpActions, playerThrowAttack, playerRangedAttack)
+import Creature (move, playerPickup, playerDropItem, playerEquip, eat, levelUpActions, playerThrowAttack, playerRangedAttack, quaff)
 import World (creatureAt, isFloor, floor, tileAt', stairsDown, stairsUp, describe, describeItem, canSee', isCreature)
 
 getInput :: IO Key
@@ -45,6 +45,7 @@ processInputScreen Play key =
          'x' -> pushScreen ExamineItem >> updated .= False
          'w' -> pushScreen EquipItem >> updated .= False
          'e' -> pushScreen EatItem >> updated .= False
+         'i' -> pushScreen QuaffItem >> updated .= False
          't' -> pushScreen Throw >> updated .= False
          'g' -> pushScreen Look >> updated .= False
          'f' -> fireWeaponScreen
@@ -56,6 +57,8 @@ processInputScreen DropItem key = inventoryScreen key dropItemFilter $ \item -> 
 processInputScreen EquipItem key = inventoryScreen key equipItemFilter $ \item -> playerEquip item
 
 processInputScreen EatItem key = inventoryScreen key eatItemFilter $ \item -> eat item
+
+processInputScreen QuaffItem key = inventoryScreen key quaffItemFilter $ \item -> quaff item
 
 processInputScreen ChooseLevelUp key =
     case lookup key levelUpActions of

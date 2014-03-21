@@ -20,6 +20,7 @@ import UI.HSCurses.CursesHelper
 import Game
 import World
 import Random
+import Creature (gainHealth, loseHealth, action, healthEffect, poisonEffect, warriorEffect)
 
 fungiPerLevel = 5
 batsPerLevel = 5
@@ -46,6 +47,7 @@ creatureDefaults = Creature { _location = (0,0,0)
                             , _xp = 0
                             , _level = 1
                             , _levelUpgrades = 0
+                            , _effects = empty
                             }
 
 createPlayer :: Creature
@@ -192,6 +194,7 @@ defaultItem = Item { _i_location = (0,0,0)
                    , _i_foodValue = 0
                    , _i_throwAttackPower = 0
                    , _i_rangedAttackPower = 0
+                   , _quaffEffect = Nothing
                    }
 
 createRock = item defaultItem
@@ -272,10 +275,32 @@ randomArmor depth = do
     cf <- randomL [ createTunic, createChainmail, createPlatemail ]
     cf depth
 
-createNewPotionOfHealth = item defaultItem
+
+addEffect :: Effect -> (Int -> GameState Item) -> Int -> GameState Item
+addEffect e gi d = do
+    i <- gi d
+    id <- nextInt
+    return $ i { _quaffEffect = Just $ e { _effectId = id } }
+
+
+createPotionOfPoison = addEffect poisonEffect $ item defaultItem
+    { _i_name = "potion of poison"
+    , _i_glyph = '!'
+    }
+
+createPotionOfHealth = addEffect healthEffect $ item defaultItem
     { _i_name = "potion of health"
     , _i_glyph = '!'
     }
+
+createPotionOfWarrior = addEffect warriorEffect $ item defaultItem
+    { _i_name = "potion of warrior"
+    , _i_glyph = '!'
+    }
+
+randomPotion depth = do
+    cf <- randomL [ createPotionOfHealth, createPotionOfPoison, createPotionOfWarrior ]
+    cf depth
 
 createItems :: GameState ()
 createItems = do
@@ -283,6 +308,7 @@ createItems = do
     createItem randomWeapon (const 2)
     createItem randomArmor (const 2)
     createItem createBread (const 1)
+    createItem randomPotion (const 2)
 
     victoryItem <- createVictoryItem
     items %= M.insert (victoryItem^.i_location) victoryItem

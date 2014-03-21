@@ -7,6 +7,7 @@ import Control.Monad (when)
 import Control.Monad.State.Strict (State, get, MonadState)
 import Data.Array as A
 import Data.Map.Strict as M (Map, (!), insert, fromAscList)
+import Data.Maybe (isJust)
 import System.Random (StdGen)
 import System.IO (hPutStrLn, stderr)
 import System.IO.Unsafe (unsafePerformIO)
@@ -21,7 +22,7 @@ gameDepth = 5
 debugOn = False
 
 data Screen = Start | Win | Lose | Play | DropItem | EquipItem | EatItem | ChooseLevelUp
-            | Help | ExamineItem | Look | Throw | ThrowItem | FireWeapon
+            | Help | ExamineItem | Look | Throw | ThrowItem | FireWeapon | QuaffItem
 
 type Coord = (Int, Int, Int)
 
@@ -49,7 +50,20 @@ styleMap = M.fromAscList
          , (ZombieStyle, AttributeStyle [Bold] RedF DefaultB)
          ]
 
-data Item = Item
+data Effect_ c g = Effect
+    { _startEffect :: c -> g
+    , _updateEffect :: c -> g
+    , _endEffect :: c -> g
+    , _effectDuration :: Int
+    , _effectTime :: Int
+    , _effectId :: Int
+    }
+makeLenses ''Effect_
+
+instance Eq (Effect_ c g) where
+    (==) a b = a^.effectId == b^.effectId
+
+data Item_ c g = Item
     { _i_glyph :: Char
     , _i_style :: StyleType
     , _i_id :: Int
@@ -60,14 +74,15 @@ data Item = Item
     , _i_foodValue :: Int
     , _i_throwAttackPower :: Int
     , _i_rangedAttackPower :: Int
+    , _quaffEffect :: Maybe (Effect_ c g)
     }
-makeLenses ''Item
+makeLenses ''Item_
 
-instance Eq Item where
+instance Eq (Item_ c g) where
     (==) a b = a^.i_id == b^.i_id
 
 data CreatureKind = Player | Fungus | Bat | Zombie | Goblin deriving (Eq)
-data Creature = Creature
+data Creature_ g = Creature
     { _location :: Coord
     , _c_glyph :: Char
     , _c_style :: StyleType
@@ -79,19 +94,20 @@ data Creature = Creature
     , _hp :: Int
     , _maxHp :: Int
     , _visionRadius :: Int
-    , _inventory :: [Item]
+    , _inventory :: [Item_ (Creature_ g) g]
     , _maxInv :: Int
-    , _weapon :: Maybe Item
-    , _armor :: Maybe Item
+    , _weapon :: Maybe (Item_ (Creature_ g) g)
+    , _armor :: Maybe (Item_ (Creature_ g) g)
     , _food :: Int
     , _maxFood :: Int
     , _xp :: Int
     , _level :: Int
     , _levelUpgrades :: Int
+    , _effects :: Map Int (Effect_ (Creature_ g) g)
     }
-makeLenses ''Creature
+makeLenses ''Creature_
 
-instance Eq Creature where
+instance Eq (Creature_ g) where
     (==) a b = a^.c_id == b^.c_id
 
 
@@ -119,8 +135,8 @@ data Game = Game
     { _uis   :: [Screen]
     , _world :: GameWorld
     , _visibleWorld :: GameWorld
-    , _creatures :: M.Map Int Creature
-    , _items :: M.Map Coord Item
+    , _creatures :: M.Map Int (Creature_ (State Game ()))
+    , _items :: M.Map Coord (Item_ (Creature_ (State Game ())) (State Game ()))
     , _messages :: [String]
     , _loseMessage :: String
     , _curId :: Int     -- for id generation
@@ -142,7 +158,11 @@ player f game =
     in fmap (updatePlayer game) (f (_creatures game M.! 0))
 
 type GameState = State Game
+type GameAction = GameState ()
+type Creature = Creature_ GameAction
 type CreatureState = State Creature
+type Item = Item_ Creature GameAction
+type Effect = Effect_ Creature GameAction
 
 nextInt :: GameState Int
 nextInt = curId <+= 1
@@ -249,8 +269,12 @@ debug str x = if debugOn then debug' str x else x
 gameChanged :: GameState Bool
 gameChanged = use updated
 
+effectDone :: Effect -> Bool
+effectDone e = e^.effectTime >= e^.effectDuration
+
 dropItemFilter _ = True
 equipItemFilter i = i^.i_attackPower > 0 || i^.i_defensePower > 0
 eatItemFilter i = i^.i_foodValue /= 0
 examineItemFilter _ = True
-throwItemFilter i = i^.i_throwAttackPower > 0
+throwItemFilter i = i^.i_throwAttackPower > 0 || quaffItemFilter i
+quaffItemFilter i = isJust $ i^.quaffEffect

@@ -7,16 +7,23 @@ module Creature
     , creatureDefense
     , playerEquip
     , eat
+    , quaff
     , levelUpStrings
     , levelUpActions
     , playerThrowAttack
     , playerRangedAttack
+    , gainHealth
+    , loseHealth
+    , action
+    , healthEffect
+    , poisonEffect
+    , warriorEffect
     ) where
 
 import Prelude as P hiding (floor)
 
 import Control.Lens
-import Control.Monad (when, unless)
+import Control.Monad (when, unless, forM_)
 import Control.Monad.State.Strict (execState, get, runState)
 import Data.List as L (delete)
 import Data.Map.Strict as M
@@ -37,7 +44,7 @@ import Line (line)
 
 
 creatureTick :: Creature -> GameState ()
-creatureTick c = creatureTick' (c^.c_kind) c
+creatureTick c = effectTick c >>= creatureTick' (c^.c_kind)
 
 creatureTick' :: CreatureKind -> Creature -> GameState ()
 
@@ -71,6 +78,20 @@ creatureTick' Goblin g = do
         pickup g
     else wander g
     autoLevelUp g
+
+effectTick :: Creature -> GameState Creature
+effectTick c = do
+    let es = c^.effects .to M.elems
+    forM_ es $ \e -> do
+        if effectDone e then do
+            updateCreatureS c $ effects %= M.delete (e^.effectId)
+            c' <- getC c
+            e^.endEffect $ c'
+        else updateCreatureS c $ effects %= M.adjust (effectTime +~ 1) (e^.effectId)
+        c' <- getC c
+        unless (effectDone e) $ e^.updateEffect $ c'
+    getC c
+    where getC c = use $ creatures .to (M.! (c^.c_id))
 
 creatureCanPickup :: Creature -> GameState Bool
 creatureCanPickup c = do
@@ -139,7 +160,7 @@ upgrades = [ (upgradeMaxHp, "look healthier")
            , (upgradeVision, "look more aware")
            ]
 
-gainHealth = do
+levelUpHealth = do
     mh <- use maxHp
     let mhf = fromIntegral mh :: Float
         hu = mhf * 0.1
@@ -173,7 +194,7 @@ autoLevelUp c = do
     when (lu > 0) $ do
         (upgrade, str) <- randomL upgrades
         let autoUp = do
-                gainHealth
+                levelUpHealth
                 upgrade
         action c str >>= notify (c^.location)
         updateCreature $ execState autoUp c
@@ -231,7 +252,10 @@ playerThrowAttack :: Item -> Creature -> GameState ()
 playerThrowAttack item other = do
     p <- use player
     let maxAttack = div (p^.attack_power) 2 + item^.i_throwAttackPower - creatureDefense other
-    commonAttack p other maxAttack
+    other' <- case item^.quaffEffect of
+                   Nothing -> return other
+                   Just e -> addEffect e other
+    commonAttack p other' maxAttack
 
 playerRangedAttack :: Creature -> GameState ()
 playerRangedAttack other = do
@@ -284,6 +308,7 @@ dropCorpse c = if hasItem c then dropItem c else dropCorpse' c
                                   , _i_foodValue = fv
                                   , _i_throwAttackPower = 0
                                   , _i_rangedAttackPower = 0
+                                  , _quaffEffect = Nothing
                                   }
                 items %= insert (corpse^.i_location) corpse
 
@@ -426,3 +451,78 @@ xpOf c =
         dv  = creatureDefense c
         in mhp + av + dv
 
+gainHealth :: Int -> Creature -> GameState ()
+gainHealth val c = do
+    notify (c^.location) "You feel healthier"
+    updateCreatureS c $ do
+        hp' <- hp <+= val
+        max <- use maxHp
+        when (hp' > max) $ hp .= max
+
+loseHealth :: Int -> Creature -> GameState ()
+loseHealth val c = do
+    let hp' = c^.hp - val
+    updateCreatureS c $ hp .= hp'
+    when (hp' <= 0) $ do
+        isPlayer <- use $ player .to (c==)
+        if isPlayer then lose "You were killed by unknown forces"
+        else do
+            creatures %= M.delete (c^.c_id)
+            let msg name = "The " ++ name ++ " dies."
+            notify (c^.location) $ msg (c^.name)
+
+addEffect :: Effect -> Creature -> GameState Creature
+addEffect e c = do
+    e^.startEffect $ c
+    return $ if (effectDone e)
+                then c
+                else (effects %~ insert (e^.effectId) e) c
+
+quaff :: Item -> GameState ()
+quaff i = do
+    let Just e = i^.quaffEffect
+    p <- use player
+    e^.startEffect $ p
+    player.inventory %= L.delete i
+    unless (effectDone e) $ player.effects %= insert (e^.effectId) e
+
+defaultEffect = Effect
+    { _startEffect = const $ return ()
+    , _endEffect = const $ return ()
+    , _updateEffect = const $ return ()
+    , _effectDuration = 0
+    , _effectTime = 0
+    , _effectId = 0
+    }
+
+creatureNotify :: String -> Creature -> GameState ()
+creatureNotify str c = do
+    acs <- action c str
+    notify (c^.location) acs
+
+warriorEffect = defaultEffect
+    { _startEffect = \c -> creatureNotify "feel stronger" c >> updateCreatureS c increasePower
+    , _endEffect = \c -> creatureNotify "feel weaker" c >> updateCreatureS c decreasePower
+    , _effectDuration = 20
+    }
+
+    where increasePower = do
+              attack_power += 5
+              defense += 5
+          decreasePower = do
+              attack_power -= 5
+              defense -= 5
+
+
+poisonEffect = defaultEffect
+    { _updateEffect = loseHealth 1
+    , _startEffect = creatureNotify "feel sick"
+    , _endEffect = creatureNotify "feel better"
+    , _effectDuration = 5
+    }
+
+healthEffect = defaultEffect
+    { _startEffect = \c -> do
+        gainHealth 20 c
+        creatureNotify "feel healthier" c
+    }

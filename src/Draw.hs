@@ -71,6 +71,8 @@ drawScreen EquipItem = drawInventoryScreen "Equip Item" equipItemFilter
 
 drawScreen EatItem = drawInventoryScreen "Eat Item" eatItemFilter
 
+drawScreen QuaffItem = drawInventoryScreen "Quaff Item" quaffItemFilter
+
 drawScreen ChooseLevelUp = do
     drawStr 5 5 "Choose Level Up"
     drawStr 6 5 "               "

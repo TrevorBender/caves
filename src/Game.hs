@@ -23,6 +23,9 @@ debugOn = False
 
 data Screen = Start | Win | Lose | Play | DropItem | EquipItem | EatItem | ChooseLevelUp
             | Help | ExamineItem | Look | Throw | ThrowItem | FireWeapon | QuaffItem
+            | CastSpell     -- pick target for spell
+            | ReadItem      -- pick spell book
+            | ReadSpellBook -- pick a spell
 
 type Coord = (Int, Int, Int)
 
@@ -63,23 +66,31 @@ makeLenses ''Effect_
 instance Eq (Effect_ c g) where
     (==) a b = a^.effectId == b^.effectId
 
+data Spell_ c g = Spell
+    { _spellName :: String
+    , _manaCost :: Int
+    , _spellEffect :: Effect_ c g
+    }
+makeLenses ''Spell_
+
 data Item_ c g = Item
-    { _i_glyph :: Char
-    , _i_style :: StyleType
-    , _i_id :: Int
-    , _i_name :: String
-    , _i_location :: Coord
+    { _itemGlyph :: Char
+    , _itemStyle :: StyleType
+    , _itemId :: Int
+    , _itemName :: String
+    , _itemLocation :: Coord
     , _i_attackPower :: Int
     , _i_defensePower :: Int
     , _i_foodValue :: Int
     , _i_throwAttackPower :: Int
     , _i_rangedAttackPower :: Int
     , _quaffEffect :: Maybe (Effect_ c g)
+    , _itemSpells :: [Spell_ c g]
     }
 makeLenses ''Item_
 
 instance Eq (Item_ c g) where
-    (==) a b = a^.i_id == b^.i_id
+    (==) a b = a^.itemId == b^.itemId
 
 data CreatureKind = Player | Fungus | Bat | Zombie | Goblin deriving (Eq)
 data Creature_ g = Creature
@@ -104,6 +115,10 @@ data Creature_ g = Creature
     , _level :: Int
     , _levelUpgrades :: Int
     , _effects :: Map Int (Effect_ (Creature_ g) g)
+    , _mana :: Int
+    , _maxMana :: Int
+    , _tickPerManaRegen :: Int
+    , _manaRegenCooldown :: Int
     }
 makeLenses ''Creature_
 
@@ -147,6 +162,7 @@ data Game = Game
     , _window :: Window
     , _styles :: Map StyleType CursesStyle
     , _targetLoc :: Coord
+    , _targetItem :: Maybe (Item_ (Creature_ (State Game())) (State Game ()))
     }
 makeLenses ''Game
 
@@ -163,6 +179,7 @@ type Creature = Creature_ GameAction
 type CreatureState = State Creature
 type Item = Item_ Creature GameAction
 type Effect = Effect_ Creature GameAction
+type Spell = Spell_ Creature GameAction
 
 nextInt :: GameState Int
 nextInt = curId <+= 1
@@ -243,7 +260,9 @@ pushScreen :: Screen -> GameState ()
 pushScreen ui = uis %= (++ [ui])
 
 dropScreen :: GameState ()
-dropScreen = uis %= init
+dropScreen = uis %= safeInit
+    where safeInit [] = []
+          safeInit xs = init xs
 
 lose :: String -> GameState ()
 lose msg = do
@@ -272,9 +291,10 @@ gameChanged = use updated
 effectDone :: Effect -> Bool
 effectDone e = e^.effectTime >= e^.effectDuration
 
-dropItemFilter _ = True
+dropItemFilter = const True
 equipItemFilter i = i^.i_attackPower > 0 || i^.i_defensePower > 0
 eatItemFilter i = i^.i_foodValue /= 0
-examineItemFilter _ = True
+examineItemFilter = const True
 throwItemFilter i = i^.i_throwAttackPower > 0 || quaffItemFilter i
 quaffItemFilter i = isJust $ i^.quaffEffect
+readItemFilter i = not $ null $ i^.itemSpells

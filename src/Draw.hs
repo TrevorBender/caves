@@ -83,11 +83,16 @@ drawScreen Help =
                   , "The only way out is to collect the idol from the bottom level"
                   , "before climbing the stairs back to the surface"
                   , ""
+                  , "[hjlk] move player"
                   , "[,] pick up item"
                   , "[d] drop item"
                   , "[e] eat item"
+                  , "[i] quaff item"
+                  , "[r] cast spell"
+                  , "[f] fire ranged weapon"
                   , "[w] wield or equip item"
                   , "[x] examine item"
+                  , "[t] throw item"
                   , "[?] for this help"
                   , ""
                   , "-- press any key to continue --"
@@ -102,6 +107,19 @@ drawScreen Throw = targetScreen "Throw at"
 drawScreen ThrowItem = drawInventoryScreen "Throw Item" throwItemFilter
 
 drawScreen FireWeapon = targetScreen "Fire weapon at"
+
+drawScreen ReadItem = drawInventoryScreen "Read Item" readItemFilter
+drawScreen CastSpell = targetScreen "Cast spell at"
+drawScreen ReadSpellBook = do
+    drawStr 5 5 "Read Spell Book"
+    drawStr 6 5 ""
+    ti <- use targetItem
+    case ti of
+         Nothing   -> drawStr 7 5 "No spells"
+         Just item -> drawBlock 7 5 $ spellStrings (item^.itemSpells)
+    where spellStrings ::  [Spell] -> [String]
+          spellStrings = zipWith (curry spell2Str) ['a'..]
+                where spell2Str (c, s) = c : (" " ++ s^.spellName)
 
 targetScreen :: String -> GameIOState ()
 targetScreen name = do
@@ -126,14 +144,14 @@ drawInventoryScreen str filt = do
 
 itemStrings :: (Item -> Bool) -> [Maybe Item] -> [Item] -> [String]
 itemStrings filt mes = map i2s . P.filter (\(_,i) -> filt i) . zip ['a'..]
-    where i2s (c, i) = c : (" - " ++ (i^.i_name) ++ if Just i `elem` mes then " *" else "" )
+    where i2s (c, i) = c : (" - " ++ (i^.itemName) ++ if Just i `elem` mes then " *" else "" )
 
 drawItem :: Item -> GameIOState ()
 drawItem item = do
     game <- get
-    let (x,y,_) = item^.i_location
-        glyph = item^.i_glyph
-        cstyle = getStyle (item^.i_style) game
+    let (x,y,_) = item^.itemLocation
+        glyph = item^.itemGlyph
+        cstyle = getStyle (item^.itemStyle) game
     visible <- inScreenBounds x y
     when visible $ do
         (sx,sy) <- getScreenCoords x y
@@ -162,13 +180,14 @@ drawHud = do
     let loc = p^.location
         (_,_,depth) = loc
         health = show (p^.hp) ++ "/" ++ show (p^.maxHp)
+        manaStr = show (p^.mana) ++ "/" ++ show (p^.maxMana)
         inv = show (length (p^.inventory)) ++ "/" ++ show (p^.maxInv)
         ap = show $ creatureAttack p
         def = show $ creatureDefense p
         levelStr = show $ p^.level
     resetColor
     drawStr gameHeight 0 $
-        "depth=" ++ show (depth + 1) ++ " hp=[" ++ health ++ "] inv=[" ++ inv ++ "] ap=" ++ ap ++ " def=" ++ def ++ " level=" ++ levelStr ++ " " ++ hunger p
+        "depth=" ++ show (depth + 1) ++ " hp=[" ++ health ++ "] mp=[" ++ manaStr ++ "] inv=[" ++ inv ++ "] ap=" ++ ap ++ " def=" ++ def ++ " level=" ++ levelStr ++ " " ++ hunger p
 
     where hunger p =
               let f  = fromIntegral $ p^.food

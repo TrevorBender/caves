@@ -167,7 +167,7 @@ describe loc = do
         return $ "It's a " ++ t^.t_description
 
 describeItem :: Item -> String
-describeItem item = "It's a " ++ item^.i_name ++ ". " ++ itemDetails item
+describeItem item = "It's a " ++ item^.itemName ++ ". " ++ itemDetails item
     where itemDetails item =
               let showIfValue i s = if i /= 0 then s ++ show i else ""
                   a = showIfValue (item^.i_attackPower) " attack: "

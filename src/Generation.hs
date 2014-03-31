@@ -20,7 +20,7 @@ import UI.HSCurses.CursesHelper
 import Game
 import World
 import Random
-import Creature (gainHealth, loseHealth, action, healthEffect, poisonEffect, warriorEffect)
+import Creature (gainHealth, loseHealth, action, healthEffect, poisonEffect, warriorEffect, regenEffect)
 
 fungiPerLevel = 5
 batsPerLevel = 5
@@ -48,6 +48,10 @@ creatureDefaults = Creature { _location = (0,0,0)
                             , _level = 1
                             , _levelUpgrades = 0
                             , _effects = empty
+                            , _mana = 0
+                            , _maxMana = 0
+                            , _tickPerManaRegen = 0
+                            , _manaRegenCooldown = 0
                             }
 
 createPlayer :: Creature
@@ -64,6 +68,10 @@ createPlayer = creatureDefaults
     , _maxInv = 20
     , _maxFood = 1000
     , _food = div 1000 3 * 2
+    , _mana = 10
+    , _maxMana = 20
+    , _tickPerManaRegen = 5
+    , _manaRegenCooldown = 0
     }
 
 creature :: Creature -> Int -> GameState Creature
@@ -180,90 +188,91 @@ item :: Item -> Int -> GameState Item
 item item depth = do
     loc <- findEmptyLocation depth
     id <- nextInt
-    return item { _i_location = loc
-                , _i_id = id
+    return item { _itemLocation = loc
+                , _itemId = id
                 }
 
-defaultItem = Item { _i_location = (0,0,0)
-                   , _i_id = -1
-                   , _i_name = "<fixme: default>"
-                   , _i_style = DefaultStyle
-                   , _i_glyph = 'X'
+defaultItem = Item { _itemLocation = (0,0,0)
+                   , _itemId = -1
+                   , _itemName = "<fixme: default>"
+                   , _itemStyle = DefaultStyle
+                   , _itemGlyph = 'X'
                    , _i_attackPower = 0
                    , _i_defensePower = 0
                    , _i_foodValue = 0
                    , _i_throwAttackPower = 0
                    , _i_rangedAttackPower = 0
                    , _quaffEffect = Nothing
+                   , _itemSpells = []
                    }
 
 createRock = item defaultItem
-    { _i_name = "rock"
-    , _i_glyph = ','
+    { _itemName = "rock"
+    , _itemGlyph = ','
     , _i_throwAttackPower = 1
     }
 
 createVictoryItem = item defaultItem
-    { _i_name = "idol"
-    , _i_style = VictoryItemStyle
-    , _i_glyph = '*'
+    { _itemName = "idol"
+    , _itemStyle = VictoryItemStyle
+    , _itemGlyph = '*'
     } (gameDepth-1)
 
 createDagger = item defaultItem
-    { _i_name = "dagger"
-    , _i_glyph = ')'
+    { _itemName = "dagger"
+    , _itemGlyph = ')'
     , _i_attackPower = 5
     , _i_throwAttackPower = 5
     }
 
 createSword = item defaultItem
-    { _i_name = "sword"
-    , _i_style = SwordStyle
-    , _i_glyph = ')'
+    { _itemName = "sword"
+    , _itemStyle = SwordStyle
+    , _itemGlyph = ')'
     , _i_attackPower = 10
     , _i_throwAttackPower = 10
     }
 
 createStaff = item defaultItem
-    { _i_name = "staff"
-    , _i_style = StaffStyle
-    , _i_glyph = ')'
+    { _itemName = "staff"
+    , _itemStyle = StaffStyle
+    , _itemGlyph = ')'
     , _i_attackPower = 5
     , _i_defensePower = 5
     , _i_throwAttackPower = 5
     }
 
 createBow = item defaultItem
-    { _i_name = "bow"
-    , _i_style = ZombieStyle
-    , _i_glyph = ')'
+    { _itemName = "bow"
+    , _itemStyle = ZombieStyle
+    , _itemGlyph = ')'
     , _i_attackPower = 1
     , _i_rangedAttackPower = 5
     }
 
 createTunic = item defaultItem
-    { _i_name = "tunic"
-    , _i_style = StaffStyle
-    , _i_glyph = '['
+    { _itemName = "tunic"
+    , _itemStyle = StaffStyle
+    , _itemGlyph = '['
     , _i_defensePower = 2
     }
 
 createChainmail = item defaultItem
-    { _i_name = "chainmail"
-    , _i_style = SwordStyle
-    , _i_glyph = '['
+    { _itemName = "chainmail"
+    , _itemStyle = SwordStyle
+    , _itemGlyph = '['
     , _i_defensePower = 4
     }
 
 createPlatemail = item defaultItem
-    { _i_name = "platemail"
-    , _i_glyph = '['
+    { _itemName = "platemail"
+    , _itemGlyph = '['
     , _i_defensePower = 4
     }
 
 createBread = item defaultItem
-    { _i_name = "bread"
-    , _i_glyph = '8'
+    { _itemName = "bread"
+    , _itemGlyph = '8'
     , _i_foodValue = 200
     }
 
@@ -284,23 +293,48 @@ addEffect e gi d = do
 
 
 createPotionOfPoison = addEffect poisonEffect $ item defaultItem
-    { _i_name = "potion of poison"
-    , _i_glyph = '!'
+    { _itemName = "potion of poison"
+    , _itemGlyph = '!'
     }
 
-createPotionOfHealth = addEffect healthEffect $ item defaultItem
-    { _i_name = "potion of health"
-    , _i_glyph = '!'
+createPotionOfHealth = addEffect (healthEffect 20) $ item defaultItem
+    { _itemName = "potion of health"
+    , _itemGlyph = '!'
     }
 
 createPotionOfWarrior = addEffect warriorEffect $ item defaultItem
-    { _i_name = "potion of warrior"
-    , _i_glyph = '!'
+    { _itemName = "potion of warrior"
+    , _itemGlyph = '!'
     }
 
 randomPotion depth = do
     cf <- randomL [ createPotionOfHealth, createPotionOfPoison, createPotionOfWarrior ]
     cf depth
+
+minorHeal = Spell
+    { _spellName = "minor heal"
+    , _manaCost = 5
+    , _spellEffect = healthEffect 10
+    }
+
+majorHeal = Spell
+    { _spellName = "major heal"
+    , _manaCost = 10
+    , _spellEffect = healthEffect 20
+    }
+
+regen = Spell
+    { _spellName = "regeneration"
+    , _manaCost = 8
+    , _spellEffect = regenEffect 1
+    }
+
+createWhiteMageSpellbook :: Int -> GameState Item
+createWhiteMageSpellbook = item defaultItem
+    { _itemName = "white mage's spellbook"
+    , _itemGlyph = '+'
+    , _itemSpells = [ minorHeal , majorHeal , regen ]
+    }
 
 createItems :: GameState ()
 createItems = do
@@ -311,12 +345,12 @@ createItems = do
     createItem randomPotion (const 2)
 
     victoryItem <- createVictoryItem
-    items %= M.insert (victoryItem^.i_location) victoryItem
+    items %= M.insert (victoryItem^.itemLocation) victoryItem
 
     where createItem :: (Int -> GameState Item) -> (Int -> Int) -> GameState ()
           createItem cf nf = do
               iss <- forM [0..(gameDepth-1)] $ \depth -> replicateM (nf depth) (cf depth)
-              let im = M.fromList $ map (\i -> (i^.i_location, i)) (concat iss)
+              let im = M.fromList $ map (\i -> (i^.itemLocation, i)) (concat iss)
               items %= M.union im
 
 cleanUp = regionMap .= emptyRegionMap
@@ -326,6 +360,8 @@ updatePlayerLocation = do
     loc <- findEmptyLocation 0
     {-bow <- createBow 0-}
     {-items %= insert loc bow-}
+    spells <- createWhiteMageSpellbook 0
+    items %= insert loc spells
     player.location .= loc
     targetLoc .= loc
 
@@ -416,6 +452,7 @@ createGame win cstyles = do
                     , _regionMap = emptyRegionMap
                     , _targetLoc = (0,0,0)
                     , _loseMessage = ""
+                    , _targetItem = Nothing
                     }
     return $ updateNewGame game
 

@@ -18,6 +18,8 @@ module Creature
     , healthEffect
     , poisonEffect
     , warriorEffect
+    , regenEffect
+    , cast
     ) where
 
 import Prelude as P hiding (floor)
@@ -44,7 +46,23 @@ import Line (line)
 
 
 creatureTick :: Creature -> GameState ()
-creatureTick c = effectTick c >>= creatureTick' (c^.c_kind)
+creatureTick c = do -- creatures can be destroyed (and removed from map), so verify they are still "alive"
+    cs <- use creatures
+    when ((c^.c_id) `M.member` cs) $ do
+        let c' = cs M.! (c^.c_id)
+        effectTick c' >>= manaTick >>= creatureTick' (c^.c_kind)
+
+manaTick :: Creature -> GameState Creature
+manaTick c = do
+    when ((c^.maxMana) > 0) $ updateCreatureS c $ do
+        cd <- manaRegenCooldown <+= 1
+        tpr <- use tickPerManaRegen
+        when (cd >= tpr) $ do
+            manaRegenCooldown .= 0
+            m <- mana <+= 1
+            mm <- use maxMana
+            when (m > mm) $ mana .= mm
+    use $ creatures .to (M.! (c^.c_id))
 
 creatureTick' :: CreatureKind -> Creature -> GameState ()
 
@@ -114,7 +132,7 @@ pickup c = do
         removeItemFromWorld loc
         updateCreatureS c $ inventory %= (item:)
         act <- action c "pickup"
-        notify pl $ " a " ++ (item^.i_name)
+        notify pl $ act ++ " a " ++ (item^.itemName)
 
 hunt :: Creature -> GameState ()
 hunt c = do
@@ -274,9 +292,14 @@ die c other = do
     isPlayer <- use $ player .to (c==)
     if isPlayer then lose $ "You were killed by a " ++ other^.name
     else do
-        creatures %= M.delete (c^.c_id)
-        let msg name = "The " ++ name ++ " dies."
-        notify (c^.location) $ msg (c^.name)
+        dropCorpse c
+        creatureDie c
+
+creatureDie :: Creature -> GameState ()
+creatureDie c = do
+    creatures %= M.delete (c^.c_id)
+    let msg name = "The " ++ name ++ " dies."
+    notify (c^.location) $ msg (c^.name)
 
 foodValue :: Creature -> Int
 foodValue c =
@@ -298,19 +321,20 @@ dropCorpse c = if hasItem c then dropItem c else dropCorpse' c
             when (r > 50) $ do
                 id <- nextInt
                 let fv = foodValue c
-                    corpse = Item { _i_name = (c^.name) ++ " corpse"
-                                  , _i_glyph = 'c'
-                                  , _i_style = c^.c_style
-                                  , _i_id = id
-                                  , _i_location = c^.location
+                    corpse = Item { _itemName = (c^.name) ++ " corpse"
+                                  , _itemGlyph = 'c'
+                                  , _itemStyle = c^.c_style
+                                  , _itemId = id
+                                  , _itemLocation = c^.location
                                   , _i_attackPower = 0
                                   , _i_defensePower = 0
                                   , _i_foodValue = fv
                                   , _i_throwAttackPower = 0
                                   , _i_rangedAttackPower = 0
                                   , _quaffEffect = Nothing
+                                  , _itemSpells = []
                                   }
-                items %= insert (corpse^.i_location) corpse
+                items %= insert (corpse^.itemLocation) corpse
 
 updateCreature :: Creature -> GameState ()
 updateCreature c = creatures %= insert (c^.c_id) c
@@ -371,8 +395,8 @@ creatureDropItem item c = do
         inventory %= L.delete item
         creatureUnequip item
     act <- action c "drop"
-    notify loc $ act ++ " the " ++ (item^.i_name)
-    items %= insert loc (item {_i_location = loc})
+    notify loc $ act ++ " the " ++ (item^.itemName)
+    items %= insert loc (item {_itemLocation = loc})
 
 creatureUnequip :: Item -> CreatureState ()
 creatureUnequip i = do
@@ -388,8 +412,8 @@ playerDropItem :: Item -> GameState ()
 playerDropItem item = do
     loc <- use $ player.location
     player.inventory %= L.delete item
-    notify loc $ "You drop the " ++ (item^.i_name)
-    items %= insert loc (item {_i_location = loc})
+    notify loc $ "You drop the " ++ (item^.itemName)
+    items %= insert loc (item {_itemLocation = loc})
     unequip item
 
 playerEquip :: Item -> GameState ()
@@ -401,7 +425,7 @@ equip :: Item -> Creature -> GameState ()
 equip i c = do
     let loc = c^.location
     act <- action c "equip"
-    notify loc $ act ++ " the " ++ i^.i_name
+    notify loc $ act ++ " the " ++ i^.itemName
     updateCreatureS c $ equip' i
 
     where equip' i = do
@@ -424,7 +448,7 @@ eat :: Item -> GameState ()
 eat i = do
     max <- use $ player.maxFood
     loc <- use $ player.location
-    notify loc $ "You eat the " ++ i^.i_name
+    notify loc $ "You eat the " ++ i^.itemName
     player.food += (i^.i_foodValue)
     player.food %= \f -> if f > max then max else f
     player.inventory %= L.delete i
@@ -466,15 +490,12 @@ loseHealth val c = do
     when (hp' <= 0) $ do
         isPlayer <- use $ player .to (c==)
         if isPlayer then lose "You were killed by unknown forces"
-        else do
-            creatures %= M.delete (c^.c_id)
-            let msg name = "The " ++ name ++ " dies."
-            notify (c^.location) $ msg (c^.name)
+                    else creatureDie c
 
 addEffect :: Effect -> Creature -> GameState Creature
 addEffect e c = do
     e^.startEffect $ c
-    return $ if (effectDone e)
+    return $ if effectDone e
                 then c
                 else (effects %~ insert (e^.effectId) e) c
 
@@ -482,9 +503,14 @@ quaff :: Item -> GameState ()
 quaff i = do
     let Just e = i^.quaffEffect
     p <- use player
-    e^.startEffect $ p
     player.inventory %= L.delete i
-    unless (effectDone e) $ player.effects %= insert (e^.effectId) e
+    applyEffect e p
+
+applyEffect :: Effect -> Creature -> GameState ()
+applyEffect e c = do
+    e^.startEffect $ c
+    unless (effectDone e) $ updateCreatureS c $
+        effects %= insert (e^.effectId) e
 
 defaultEffect = Effect
     { _startEffect = const $ return ()
@@ -521,8 +547,23 @@ poisonEffect = defaultEffect
     , _effectDuration = 5
     }
 
-healthEffect = defaultEffect
-    { _startEffect = \c -> do
-        gainHealth 20 c
-        creatureNotify "feel healthier" c
+healthEffect val = defaultEffect
+    { _startEffect = gainHealth val
     }
+
+regenEffect val = defaultEffect
+    { _updateEffect = gainHealth val
+    , _startEffect = creatureNotify "start regenerating"
+    , _endEffect = creatureNotify "stop regenerating"
+    , _effectDuration = 20
+    }
+
+cast :: Spell -> GameState ()
+cast spell = do
+    tl <- use targetLoc
+    mc <- creatureAt tl
+    case mc of
+         Nothing -> notify tl $ spell^.spellName ++ " fizzles."
+         Just c -> do
+             notify tl $ "casting spell " ++ spell^.spellName ++ " at " ++ c^.name
+             updateCreature =<< addEffect (spell^.spellEffect) c

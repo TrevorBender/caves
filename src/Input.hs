@@ -9,13 +9,14 @@ import Control.Lens
 import Control.Monad (when, unless)
 import Control.Monad.State.Strict (get, execState)
 import Data.Array
+import Data.Foldable (forM_)
 import Data.List as L (delete)
 import Data.Map.Strict as M (insert)
 import Data.Maybe (isJust, fromJust)
 import UI.HSCurses.Curses as C (Key(..), getCh)
 
 import Game
-import Creature (move, playerPickup, playerDropItem, playerEquip, eat, levelUpActions, playerThrowAttack, playerRangedAttack, quaff)
+import Creature (move, playerPickup, playerDropItem, playerEquip, eat, levelUpActions, playerThrowAttack, playerRangedAttack, quaff, cast)
 import World (creatureAt, isFloor, floor, tileAt', stairsDown, stairsUp, describe, describeItem, canSee', isCreature)
 
 getInput :: IO Key
@@ -46,6 +47,7 @@ processInputScreen Play key =
          'w' -> pushScreen EquipItem >> updated .= False
          'e' -> pushScreen EatItem >> updated .= False
          'i' -> pushScreen QuaffItem >> updated .= False
+         'r' -> pushScreen CastSpell >> updated .= False
          't' -> pushScreen Throw >> updated .= False
          'g' -> pushScreen Look >> updated .= False
          'f' -> fireWeaponScreen
@@ -86,7 +88,7 @@ processInputScreen ThrowItem key = inventoryScreen key throwItemFilter $ \item -
             player.inventory %= delete item
         else do
             player.inventory %= delete item
-            items %= insert tl (item { _i_location = tl })
+            items %= insert tl (item { _itemLocation = tl })
 
 processInputScreen Throw key = targetScreen key $ do
     pushScreen ThrowItem
@@ -100,6 +102,24 @@ processInputScreen FireWeapon key = targetScreen key $ do
             Just c <- creatureAt tl
             playerRangedAttack c
 
+processInputScreen CastSpell key = targetScreen key $ do
+    pushScreen ReadItem
+    updated .= False
+processInputScreen ReadItem key = inventoryScreen key readItemFilter $ \item -> do
+    targetItem .= Just item
+    pushScreen ReadSpellBook
+    updated .= False
+processInputScreen ReadSpellBook key = do
+    mti <- use targetItem
+    case mti of
+         Nothing -> dropScreen
+         Just ti -> dropScreen >> readSpellBook key (ti^.itemSpells)
+
+readSpellBook :: Char -> [Spell] -> GameState ()
+readSpellBook key sps = do
+    let lm = zip ['a'..] sps
+        ms = lookup key lm
+    forM_ ms cast
 
 whenPlayerCanSee :: (Creature -> Coord -> GameState ()) -> GameState ()
 whenPlayerCanSee action = do
@@ -145,8 +165,8 @@ inventoryScreen key filt action = do
     when (isJust mi) $ do
         let i = fromJust mi
         updated .= True
-        action i
         dropScreen
+        action i
     case key of
          '\ESC' -> dropScreen
          _ -> return ()
@@ -160,7 +180,7 @@ selectedItem key filt = do
 endGame :: GameState ()
 endGame = do
     inv <- use $ player.inventory
-    let vi = filter (\i -> i^.i_glyph == '*') inv
+    let vi = filter (\i -> i^.itemGlyph == '*') inv
     when (null vi) $ lose "You attempt to escape without the idol. The cave entrance collapses on your face."
     unless (null vi) win
 

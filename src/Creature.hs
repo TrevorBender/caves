@@ -558,12 +558,25 @@ regenEffect val = defaultEffect
     , _effectDuration = 20
     }
 
+-- TODO -- effect id should be generated at cast time (each spell cast has a different effect)
+-- theoretically, the same spell effect could be applied multiple times
 cast :: Spell -> GameState ()
 cast spell = do
-    tl <- use targetLoc
-    mc <- creatureAt tl
-    case mc of
-         Nothing -> notify tl $ spell^.spellName ++ " fizzles."
-         Just c -> do
-             notify tl $ "casting spell " ++ spell^.spellName ++ " at " ++ c^.name
-             updateCreature =<< addEffect (spell^.spellEffect) c
+    let e = spell^.spellEffect
+    m <- use $ player.mana
+    when (m >= spell^.manaCost) $ do
+        tl <- use targetLoc
+        player.mana -= spell^.manaCost
+        mc <- creatureAt tl
+        case mc of
+             Nothing -> notify tl $ spell^.spellName ++ " fizzles."
+             Just c -> do
+                 notify tl $ "casting spell " ++ spell^.spellName ++ " at " ++ c^.name
+                 e^.startEffect $ c
+                 when (effectDone e) $ do
+                     use (creatureWithId (c^.c_id)) >>= e^.endEffect
+                 creatureWithId (c^.c_id) %= execState (castOnCreature e)
+                 {-updateCreature =<< addEffect (spell^.spellEffect) c-}
+    where castOnCreature e =
+              unless (effectDone e) $
+                 effects %= insert (e^.effectId) e

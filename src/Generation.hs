@@ -343,6 +343,7 @@ createItems = do
     createItem randomArmor (const 2)
     createItem createBread (const 1)
     createItem randomPotion (const 2)
+    createItem createWhiteMageSpellbook (\d -> if d < 2 then 1 else 0)
 
     victoryItem <- createVictoryItem
     items %= M.insert (victoryItem^.itemLocation) victoryItem
@@ -355,13 +356,26 @@ createItems = do
 
 cleanUp = regionMap .= emptyRegionMap
 
+cheat :: GameState ()
+cheat = do
+    sb <- createWhiteMageSpellbook 0
+    bow <- createBow 0
+    plate <- createPlatemail 0
+    sword <- createSword 0
+    player %= \p -> p
+        { _level = 10
+        , _maxHp = 100
+        , _hp = 100
+        , _maxFood = 1000000
+        , _food    = 1000000
+        , _attack_power = 50
+        , _defense = 50
+        , _visionRadius = 100
+        , _inventory = [sb,bow,plate,sword] }
+
 updatePlayerLocation :: GameState ()
 updatePlayerLocation = do
     loc <- findEmptyLocation 0
-    {-bow <- createBow 0-}
-    {-items %= insert loc bow-}
-    spells <- createWhiteMageSpellbook 0
-    items %= insert loc spells
     player.location .= loc
     targetLoc .= loc
 
@@ -376,6 +390,7 @@ updateNewGame = execState $ do
     updatePlayerLocation
     populateGame
     createItems
+    cheat
     cleanUp
 
 fillRegion :: Coord                   -- ^ Starting location

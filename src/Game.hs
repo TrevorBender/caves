@@ -169,9 +169,12 @@ makeLenses ''Game
 -- identical function signature:
 -- player :: Functor f => (Creature -> f Creature) -> Game -> f Game
 player :: Lens' Game Creature
-player f game =
-    let updatePlayer game p' = creatures %~ M.insert 0 p' $ game
-    in fmap (updatePlayer game) (f (_creatures game M.! 0))
+player = creatureWithId 0
+
+creatureWithId :: Functor f => Int -> (Creature -> f Creature) -> Game -> f Game
+creatureWithId id f game =
+    let updateCreature game c' = creatures %~ M.insert id c' $ game
+    in fmap (updateCreature game) (f (_creatures game M.! id))
 
 type GameState = State Game
 type GameAction = GameState ()

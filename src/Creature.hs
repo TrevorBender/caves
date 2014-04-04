@@ -337,10 +337,10 @@ dropCorpse c = if hasItem c then dropItem c else dropCorpse' c
                 items %= insert (corpse^.itemLocation) corpse
 
 updateCreature :: Creature -> GameState ()
-updateCreature c = creatures %= insert (c^.c_id) c
+updateCreature c = creature c .= c
 
 updateCreatureS :: Creature -> CreatureState a -> GameState ()
-updateCreatureS cs c = updateCreature $ execState c cs
+updateCreatureS c cs = creature c %= execState cs
 
 move :: Creature -> Coord -> GameState ()
 move creature offset = do
@@ -476,8 +476,7 @@ xpOf c =
         in mhp + av + dv
 
 gainHealth :: Int -> Creature -> GameState ()
-gainHealth val c = do
-    notify (c^.location) "You feel healthier"
+gainHealth val c =
     updateCreatureS c $ do
         hp' <- hp <+= val
         max <- use maxHp
@@ -574,9 +573,8 @@ cast spell = do
                  notify tl $ "casting spell " ++ spell^.spellName ++ " at " ++ c^.name
                  e^.startEffect $ c
                  when (effectDone e) $ do
-                     use (creatureWithId (c^.c_id)) >>= e^.endEffect
-                 creatureWithId (c^.c_id) %= execState (castOnCreature e)
-                 {-updateCreature =<< addEffect (spell^.spellEffect) c-}
+                     use (creature c) >>= e^.endEffect
+                 creature c %= execState (castOnCreature e)
     where castOnCreature e =
               unless (effectDone e) $
                  effects %= insert (e^.effectId) e

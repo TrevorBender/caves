@@ -171,6 +171,11 @@ makeLenses ''Game
 player :: Lens' Game Creature
 player = creatureWithId 0
 
+creature :: Functor f => Creature -> (Creature -> f Creature) -> Game -> f Game
+creature c =
+    let id = c^.c_id
+    in creatureWithId id
+
 creatureWithId :: Functor f => Int -> (Creature -> f Creature) -> Game -> f Game
 creatureWithId id f game =
     let updateCreature game c' = creatures %~ M.insert id c' $ game

@@ -74,14 +74,14 @@ createPlayer = creatureDefaults
     , _manaRegenCooldown = 0
     }
 
-creature :: Creature -> Int -> GameState Creature
-creature constructor depth = do
+createCreature :: Creature -> Int -> GameState Creature
+createCreature constructor depth = do
     loc <- findEmptyLocation depth
     thisId <- nextInt
     return $ constructor { _location = loc , _c_id = thisId }
 
 createFungus :: Int -> GameState Creature
-createFungus = creature creatureDefaults
+createFungus = createCreature creatureDefaults
     { _c_kind = Fungus
     , _c_glyph = 'f'
     , _c_style = FungusStyle
@@ -92,7 +92,7 @@ createFungus = creature creatureDefaults
     }
 
 createBat :: Int -> GameState Creature
-createBat = creature creatureDefaults
+createBat = createCreature creatureDefaults
         { _c_kind = Bat
         , _c_glyph = 'b'
         , _c_style = BatStyle
@@ -104,7 +104,7 @@ createBat = creature creatureDefaults
         }
 
 createZombie :: Int -> GameState Creature
-createZombie = creature creatureDefaults
+createZombie = createCreature creatureDefaults
     { _c_kind = Zombie
     , _c_glyph = 'z'
     , _c_style = ZombieStyle
@@ -118,7 +118,7 @@ createZombie = creature creatureDefaults
 
 createGoblin :: Int -> GameState Creature
 createGoblin d = do
-    g <- creature creatureDefaults
+    g <- createCreature creatureDefaults
         { _c_kind = Goblin
         , _c_glyph = 'g'
         , _c_style = ZombieStyle
@@ -390,7 +390,7 @@ updateNewGame = execState $ do
     updatePlayerLocation
     populateGame
     createItems
-    cheat
+    {-cheat-}
     cleanUp
 
 fillRegion :: Coord                   -- ^ Starting location

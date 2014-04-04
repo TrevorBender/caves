@@ -52,6 +52,8 @@ creatureDefaults = Creature { _location = (0,0,0)
                             , _maxMana = 0
                             , _tickPerManaRegen = 0
                             , _manaRegenCooldown = 0
+                            , _tickPerHealthRegen = 0
+                            , _healthRegenCooldown = 0
                             }
 
 createPlayer :: Creature
@@ -70,8 +72,8 @@ createPlayer = creatureDefaults
     , _food = div 1000 3 * 2
     , _mana = 10
     , _maxMana = 20
-    , _tickPerManaRegen = 5
-    , _manaRegenCooldown = 0
+    , _tickPerManaRegen = 10
+    , _tickPerHealthRegen = 50
     }
 
 createCreature :: Creature -> Int -> GameState Creature
@@ -339,11 +341,11 @@ createWhiteMageSpellbook = item defaultItem
 createItems :: GameState ()
 createItems = do
     createItem createRock (const $ div (gameWidth * gameHeight) 50)
-    createItem randomWeapon (const 2)
-    createItem randomArmor (const 2)
+    createItem randomWeapon (const 1)
+    createItem randomArmor (const 1)
     createItem createBread (const 1)
-    createItem randomPotion (const 2)
-    createItem createWhiteMageSpellbook (\d -> if d < 2 then 1 else 0)
+    createItem randomPotion (const 1)
+    createItem createWhiteMageSpellbook (\d -> if d > 3 then 1 else 0)
 
     victoryItem <- createVictoryItem
     items %= M.insert (victoryItem^.itemLocation) victoryItem

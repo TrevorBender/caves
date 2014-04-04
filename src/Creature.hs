@@ -46,23 +46,35 @@ import Line (line)
 
 
 creatureTick :: Creature -> GameState ()
-creatureTick c = do -- creatures can be destroyed (and removed from map), so verify they are still "alive"
+creatureTick c = do
     cs <- use creatures
+    -- creatures can be destroyed (and removed from map), so verify they are "still alive"
+    -- and that there is no cake
     when ((c^.c_id) `M.member` cs) $ do
-        let c' = cs M.! (c^.c_id)
-        effectTick c' >>= manaTick >>= creatureTick' (c^.c_kind)
+        use (creature c) >>= effectTick
+        manaTick c
+        healthTick c
+        use (creature c) >>= creatureTick' (c^.c_kind)
 
-manaTick :: Creature -> GameState Creature
-manaTick c = do
-    when ((c^.maxMana) > 0) $ updateCreatureS c $ do
-        cd <- manaRegenCooldown <+= 1
-        tpr <- use tickPerManaRegen
-        when (cd >= tpr) $ do
-            manaRegenCooldown .= 0
-            m <- mana <+= 1
-            mm <- use maxMana
-            when (m > mm) $ mana .= mm
-    use $ creatures .to (M.! (c^.c_id))
+manaTick :: Creature -> GameState ()
+manaTick c = updateCreatureS c $ do
+    mm <- use maxMana
+    cd <- manaRegenCooldown <+= 1
+    tpr <- use tickPerManaRegen
+    when (mm > 0 && cd >= tpr) $ do
+        manaRegenCooldown .= 0
+        m <- mana <+= 1
+        when (m > mm) $ mana .= mm
+
+healthTick :: Creature -> GameState ()
+healthTick c = updateCreatureS c $ do
+    mh <- use maxHp
+    cd <- healthRegenCooldown <+= 1
+    tpr <- use tickPerHealthRegen
+    when (cd >= tpr) $ do
+        healthRegenCooldown .= 0
+        h <- use hp
+        when (h < mh) $ hp += 1
 
 creatureTick' :: CreatureKind -> Creature -> GameState ()
 
@@ -103,13 +115,10 @@ effectTick c = do
     forM_ es $ \e -> do
         if effectDone e then do
             updateCreatureS c $ effects %= M.delete (e^.effectId)
-            c' <- getC c
-            e^.endEffect $ c'
+            use (creature c) >>= e^.endEffect
         else updateCreatureS c $ effects %= M.adjust (effectTime +~ 1) (e^.effectId)
-        c' <- getC c
-        unless (effectDone e) $ e^.updateEffect $ c'
-    getC c
-    where getC c = use $ creatures .to (M.! (c^.c_id))
+        unless (effectDone e) $ use (creature c) >>= e^.updateEffect
+    use $ creature c
 
 creatureCanPickup :: Creature -> GameState Bool
 creatureCanPickup c = do
@@ -130,9 +139,8 @@ pickup c = do
     when (not fullInv && itemThere) $ do
         item <- itemAt loc
         removeItemFromWorld loc
-        updateCreatureS c $ inventory %= (item:)
-        act <- action c "pickup"
-        notify pl $ act ++ " a " ++ (item^.itemName)
+        (creature c).inventory %= (item:)
+        creatureNotify ("pickup a " ++ item^.itemName) c
 
 hunt :: Creature -> GameState ()
 hunt c = do
@@ -214,8 +222,8 @@ autoLevelUp c = do
         let autoUp = do
                 levelUpHealth
                 upgrade
-        action c str >>= notify (c^.location)
-        updateCreature $ execState autoUp c
+        creatureNotify str c
+        updateCreatureS c autoUp
 
 wander :: Creature -> GameState ()
 wander c = do
@@ -228,7 +236,10 @@ action c action = do
     p <- use player
     return $ if c == p
                 then "You " ++ action
-                else c^.name ++ " " ++  action ++ "s"
+                else c^.name ++ " " ++ thirdPerson action
+    where thirdPerson = unwords . thirdPerson' . words
+            where thirdPerson' [] = []
+                  thirdPerson' (x:xs) = (x ++ "s") : xs
 
 target :: Creature -> GameState String
 target c = do
@@ -251,8 +262,8 @@ creatureAttack c = c^.attack_power + itemAttackPower c
 creatureDefense :: Creature -> Int
 creatureDefense c = c^.defense + itemDefensePower c
 
-commonAttack :: Creature -> Creature -> Int -> GameState ()
-commonAttack creature other maxAttack =
+commonAttack :: Creature -> Int -> Creature -> GameState ()
+commonAttack creature maxAttack other =
     when (maxAttack > 0) $ do
         attackValue <- randomR (1, maxAttack)
         let other' = (hp -~ attackValue) other
@@ -270,22 +281,22 @@ playerThrowAttack :: Item -> Creature -> GameState ()
 playerThrowAttack item other = do
     p <- use player
     let maxAttack = div (p^.attack_power) 2 + item^.i_throwAttackPower - creatureDefense other
-    other' <- case item^.quaffEffect of
-                   Nothing -> return other
-                   Just e -> addEffect e other
-    commonAttack p other' maxAttack
+        quaff = case item^.quaffEffect of
+                     Nothing -> return other
+                     Just e -> addEffect e other
+    quaff >>= commonAttack p maxAttack
 
 playerRangedAttack :: Creature -> GameState ()
 playerRangedAttack other = do
     p <- use player
     let Just w = p^.weapon
         maxAttack = div (p^.attack_power) 2 + w^.i_rangedAttackPower - creatureDefense other
-    commonAttack p other maxAttack
+    commonAttack p maxAttack other
 
 attack :: Creature -> Creature -> GameState()
-attack creature other = do
+attack creature other =
     let maxAttack = creatureAttack  creature - creatureDefense other
-    commonAttack creature other maxAttack
+    in commonAttack creature maxAttack other
 
 die :: Creature -> Creature -> GameState ()
 die c other = do
@@ -316,25 +327,26 @@ dropCorpse c = if hasItem c then dropItem c else dropCorpse' c
               let item = c^.inventory .to head
               creatureDropItem item c
 
+          corpse c id = Item { _itemName = (c^.name) ++ " corpse"
+                          , _itemGlyph = 'c'
+                          , _itemStyle = c^.c_style
+                          , _itemId = id
+                          , _itemLocation = c^.location
+                          , _i_attackPower = 0
+                          , _i_defensePower = 0
+                          , _i_foodValue = foodValue c
+                          , _i_throwAttackPower = 0
+                          , _i_rangedAttackPower = 0
+                          , _quaffEffect = Nothing
+                          , _itemSpells = []
+                          }
+
           dropCorpse' c = do
             r <- randomR (1, 100)
             when (r > 50) $ do
                 id <- nextInt
-                let fv = foodValue c
-                    corpse = Item { _itemName = (c^.name) ++ " corpse"
-                                  , _itemGlyph = 'c'
-                                  , _itemStyle = c^.c_style
-                                  , _itemId = id
-                                  , _itemLocation = c^.location
-                                  , _i_attackPower = 0
-                                  , _i_defensePower = 0
-                                  , _i_foodValue = fv
-                                  , _i_throwAttackPower = 0
-                                  , _i_rangedAttackPower = 0
-                                  , _quaffEffect = Nothing
-                                  , _itemSpells = []
-                                  }
-                items %= insert (corpse^.itemLocation) corpse
+                let ci = corpse c id
+                items %= insert (ci^.itemLocation) ci
 
 updateCreature :: Creature -> GameState ()
 updateCreature c = creature c .= c
@@ -423,9 +435,8 @@ playerEquip i = do
 
 equip :: Item -> Creature -> GameState ()
 equip i c = do
-    let loc = c^.location
-    act <- action c "equip"
-    notify loc $ act ++ " the " ++ i^.itemName
+    let equipStr = "equip the " ++ i^.itemName
+    creatureNotify equipStr c
     updateCreatureS c $ equip' i
 
     where equip' i = do
@@ -520,6 +531,9 @@ defaultEffect = Effect
     , _effectId = 0
     }
 
+playerNotify :: String -> GameState ()
+playerNotify act = use player >>= creatureNotify act
+
 creatureNotify :: String -> Creature -> GameState ()
 creatureNotify str c = do
     acs <- action c str
@@ -572,7 +586,7 @@ cast spell = do
              Just c -> do
                  notify tl $ "casting spell " ++ spell^.spellName ++ " at " ++ c^.name
                  e^.startEffect $ c
-                 when (effectDone e) $ do
+                 when (effectDone e) $
                      use (creature c) >>= e^.endEffect
                  creature c %= execState (castOnCreature e)
     where castOnCreature e =

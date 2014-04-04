@@ -6,7 +6,7 @@ import Control.Lens
 import Control.Monad (when)
 import Control.Monad.State.Strict (State, get, MonadState)
 import Data.Array as A
-import Data.Map.Strict as M (Map, (!), insert, fromAscList)
+import Data.Map.Strict as M (Map, (!), insert, fromAscList, lookup)
 import Data.Maybe (isJust)
 import System.Random (StdGen)
 import System.IO (hPutStrLn, stderr)
@@ -119,6 +119,8 @@ data Creature_ g = Creature
     , _maxMana :: Int
     , _tickPerManaRegen :: Int
     , _manaRegenCooldown :: Int
+    , _tickPerHealthRegen :: Int
+    , _healthRegenCooldown :: Int
     }
 makeLenses ''Creature_
 

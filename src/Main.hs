@@ -8,7 +8,17 @@ import Control.Monad.State.Strict (execState, get, execStateT)
 import Data.Map.Strict as M (Map, elems, fromAscList, keys)
 import System.IO (hGetEcho, hSetEcho, stdin)
 import UI.HSCurses.Curses
-import UI.HSCurses.CursesHelper as CH
+    ( erase
+    , initCurses
+    , initScr
+    , echo
+    , cursSet
+    , CursorVisibility(..)
+    , move
+    , startColor
+    , endWin
+    )
+import UI.HSCurses.CursesHelper as CH (convertStyles)
 
 import Draw (drawGame, resetColor)
 import Game

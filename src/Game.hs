@@ -11,8 +11,8 @@ import Data.Maybe (isJust)
 import System.Random (StdGen)
 import System.IO (hPutStrLn, stderr)
 import System.IO.Unsafe (unsafePerformIO)
-import UI.HSCurses.Curses
-import UI.HSCurses.CursesHelper
+import UI.HSCurses.Curses (Window)
+import UI.HSCurses.CursesHelper as CH
 
 gameWidth, gameHeight, gameDepth :: Int
 gameWidth = 90

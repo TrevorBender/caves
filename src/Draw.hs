@@ -12,8 +12,8 @@ import Data.Array as A
 import Data.Char (chr, ord, intToDigit)
 import Data.Map.Strict as M (elems, filter, assocs, filterWithKey)
 import Data.Maybe (isJust)
-import UI.HSCurses.Curses
-import UI.HSCurses.CursesHelper
+import UI.HSCurses.Curses (refresh, mvWAddStr, scrSize)
+import UI.HSCurses.CursesHelper (setStyle, resetStyle)
 
 import Game
 import World (tileAt, unknownTile, canSee)

@@ -14,8 +14,8 @@ import Data.Map.Strict as M
     , alter, filter, keys, (!), filterWithKey, delete, mapWithKey)
 import Data.Maybe (fromJust)
 import System.Random as R (getStdGen)
-import UI.HSCurses.Curses
-import UI.HSCurses.CursesHelper
+import UI.HSCurses.Curses (Window)
+import UI.HSCurses.CursesHelper (CursesStyle)
 
 import Game
 import World

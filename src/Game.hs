@@ -79,11 +79,11 @@ data Item_ c g = Item
     , _itemId :: Int
     , _itemName :: String
     , _itemLocation :: Coord
-    , _i_attackPower :: Int
-    , _i_defensePower :: Int
-    , _i_foodValue :: Int
-    , _i_throwAttackPower :: Int
-    , _i_rangedAttackPower :: Int
+    , _iAttackPower :: Int
+    , _iDefensePower :: Int
+    , _iFoodValue :: Int
+    , _iThrowAttackPower :: Int
+    , _iRangedAttackPower :: Int
     , _quaffEffect :: Maybe (Effect_ c g)
     , _itemSpells :: [Spell_ c g]
     }
@@ -95,12 +95,12 @@ instance Eq (Item_ c g) where
 data CreatureKind = Player | Fungus | Bat | Zombie | Goblin deriving (Eq)
 data Creature_ g = Creature
     { _location :: Coord
-    , _c_glyph :: Char
-    , _c_style :: StyleType
-    , _c_id :: Int
-    , _c_kind :: CreatureKind
+    , _cGlyph :: Char
+    , _cStyle :: StyleType
+    , _cId :: Int
+    , _cKind :: CreatureKind
     , _name :: String
-    , _attack_power :: Int
+    , _attackPower :: Int
     , _defense :: Int
     , _hp :: Int
     , _maxHp :: Int
@@ -125,7 +125,7 @@ data Creature_ g = Creature
 makeLenses ''Creature_
 
 instance Eq (Creature_ g) where
-    (==) a b = a^.c_id == b^.c_id
+    (==) a b = a^.cId == b^.cId
 
 
 data TileKind = Floor | Wall | StairsUp | StairsDown | Unknown deriving (Eq, Show)
@@ -133,7 +133,7 @@ data TileKind = Floor | Wall | StairsUp | StairsDown | Unknown deriving (Eq, Sho
 data Tile = Tile
     { _kind  :: TileKind
     , _glyph :: Char
-    , _t_description :: String
+    , _tDescription :: String
     }
 makeLenses ''Tile
 
@@ -175,7 +175,7 @@ player = creatureWithId 0
 
 creature :: Functor f => Creature -> (Creature -> f Creature) -> Game -> f Game
 creature c =
-    let id = c^.c_id
+    let id = c^.cId
     in creatureWithId id
 
 creatureWithId :: Functor f => Int -> (Creature -> f Creature) -> Game -> f Game
@@ -302,9 +302,9 @@ effectDone :: Effect -> Bool
 effectDone e = e^.effectTime >= e^.effectDuration
 
 dropItemFilter = const True
-equipItemFilter i = i^.i_attackPower > 0 || i^.i_defensePower > 0
-eatItemFilter i = i^.i_foodValue /= 0
+equipItemFilter i = i^.iAttackPower > 0 || i^.iDefensePower > 0
+eatItemFilter i = i^.iFoodValue /= 0
 examineItemFilter = const True
-throwItemFilter i = i^.i_throwAttackPower > 0 || quaffItemFilter i
+throwItemFilter i = i^.iThrowAttackPower > 0 || quaffItemFilter i
 quaffItemFilter i = isJust $ i^.quaffEffect
 readItemFilter i = not $ null $ i^.itemSpells

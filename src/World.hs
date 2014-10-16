@@ -25,12 +25,12 @@ import Game
 import Line (line)
 import Random as R (randomR)
 
-floor = Tile { _kind = Floor , _glyph = '.' , _t_description = "cave floor" }
-wall = Tile { _kind = Wall , _glyph = '#' , _t_description = "cave wall" }
-outOfBounds = Tile { _kind = Wall , _glyph = ' ' , _t_description = "out of bounds" }
-stairsDown = Tile { _kind = StairsDown , _glyph = '>' , _t_description = "stairs down" }
-stairsUp = Tile { _kind = StairsUp , _glyph = '<' , _t_description = "stairs up" }
-unknownTile = Tile { _kind = Unknown , _glyph = ' ' , _t_description = "unknown" }
+floor = Tile { _kind = Floor , _glyph = '.' , _tDescription = "cave floor" }
+wall = Tile { _kind = Wall , _glyph = '#' , _tDescription = "cave wall" }
+outOfBounds = Tile { _kind = Wall , _glyph = ' ' , _tDescription = "out of bounds" }
+stairsDown = Tile { _kind = StairsDown , _glyph = '>' , _tDescription = "stairs down" }
+stairsUp = Tile { _kind = StairsUp , _glyph = '<' , _tDescription = "stairs up" }
+unknownTile = Tile { _kind = Unknown , _glyph = ' ' , _tDescription = "unknown" }
 
 canSee :: Game -> Coord -> Creature -> Bool
 canSee game loc@(x,y,z) c =
@@ -164,13 +164,13 @@ describe loc = do
         i <- itemAt loc
         return $ describeItem i
     else
-        return $ "It's a " ++ t^.t_description
+        return $ "It's a " ++ t^.tDescription
 
 describeItem :: Item -> String
 describeItem item = "It's a " ++ item^.itemName ++ ". " ++ itemDetails item
     where itemDetails item =
               let showIfValue i s = if i /= 0 then s ++ show i else ""
-                  a = showIfValue (item^.i_attackPower) " attack: "
-                  d = showIfValue (item^.i_defensePower) " defense: "
-                  f = showIfValue (item^.i_foodValue) " food: "
+                  a = showIfValue (item^.iAttackPower) " attack: "
+                  d = showIfValue (item^.iDefensePower) " defense: "
+                  f = showIfValue (item^.iFoodValue) " food: "
                   in a ++ d ++ f

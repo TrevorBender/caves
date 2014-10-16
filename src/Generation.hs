@@ -28,12 +28,12 @@ emptyInventory = []
 
 creatureDefaults :: Creature
 creatureDefaults = Creature { _location = (0,0,0)
-                            , _c_kind = Player
-                            , _c_glyph = 'X'
-                            , _c_style = DefaultStyle
-                            , _c_id = -1
+                            , _cKind = Player
+                            , _cGlyph = 'X'
+                            , _cStyle = DefaultStyle
+                            , _cId = -1
                             , _name = "<fixme: default>"
-                            , _attack_power = 0
+                            , _attackPower = 0
                             , _defense = 1
                             , _hp = 1
                             , _maxHp = 1
@@ -58,12 +58,12 @@ creatureDefaults = Creature { _location = (0,0,0)
 
 createPlayer :: Creature
 createPlayer = creatureDefaults
-    { _c_kind = Player
-    , _c_glyph = '@'
-    , _c_style = PlayerStyle
-    , _c_id = 0
+    { _cKind = Player
+    , _cGlyph = '@'
+    , _cStyle = PlayerStyle
+    , _cId = 0
     , _name = "You"
-    , _attack_power = 10
+    , _attackPower = 10
     , _defense = 1
     , _hp = 40
     , _maxHp = 40
@@ -80,13 +80,13 @@ createCreature :: Creature -> Int -> GameState Creature
 createCreature constructor depth = do
     loc <- findEmptyLocation depth
     thisId <- nextInt
-    return $ constructor { _location = loc , _c_id = thisId }
+    return $ constructor { _location = loc , _cId = thisId }
 
 createFungus :: Int -> GameState Creature
 createFungus = createCreature creatureDefaults
-    { _c_kind = Fungus
-    , _c_glyph = 'f'
-    , _c_style = FungusStyle
+    { _cKind = Fungus
+    , _cGlyph = 'f'
+    , _cStyle = FungusStyle
     , _name = "lichen"
     , _defense = 1
     , _hp = 1
@@ -95,11 +95,11 @@ createFungus = createCreature creatureDefaults
 
 createBat :: Int -> GameState Creature
 createBat = createCreature creatureDefaults
-        { _c_kind = Bat
-        , _c_glyph = 'b'
-        , _c_style = BatStyle
+        { _cKind = Bat
+        , _cGlyph = 'b'
+        , _cStyle = BatStyle
         , _name = "bat"
-        , _attack_power = 4
+        , _attackPower = 4
         , _defense = 4
         , _hp = 5
         , _maxHp = 5
@@ -107,11 +107,11 @@ createBat = createCreature creatureDefaults
 
 createZombie :: Int -> GameState Creature
 createZombie = createCreature creatureDefaults
-    { _c_kind = Zombie
-    , _c_glyph = 'z'
-    , _c_style = ZombieStyle
+    { _cKind = Zombie
+    , _cGlyph = 'z'
+    , _cStyle = ZombieStyle
     , _name = "zombie"
-    , _attack_power = 15
+    , _attackPower = 15
     , _defense = 5
     , _hp = 15
     , _maxHp = 15
@@ -121,11 +121,11 @@ createZombie = createCreature creatureDefaults
 createGoblin :: Int -> GameState Creature
 createGoblin d = do
     g <- createCreature creatureDefaults
-        { _c_kind = Goblin
-        , _c_glyph = 'g'
-        , _c_style = ZombieStyle
+        { _cKind = Goblin
+        , _cGlyph = 'g'
+        , _cStyle = ZombieStyle
         , _name = "goblin"
-        , _attack_power = 20
+        , _attackPower = 20
         , _defense = 10
         , _hp = 20
         , _maxHp = 20
@@ -147,7 +147,7 @@ populateGame = do
     where populateCreature :: (Int -> GameState Creature) -> (Int -> Int) -> GameState ()
           populateCreature createCreature cPerLevel = do
               cs <- forM [0..(gameDepth-1)] $ \depth -> replicateM (cPerLevel depth) $ createCreature depth
-              let cMap = M.fromList $ map (\c -> (c^.c_id, c)) (concat cs)
+              let cMap = M.fromList $ map (\c -> (c^.cId, c)) (concat cs)
               creatures %= M.union cMap
 
 createVictoryStairs :: GameState ()
@@ -199,11 +199,11 @@ defaultItem = Item { _itemLocation = (0,0,0)
                    , _itemName = "<fixme: default>"
                    , _itemStyle = DefaultStyle
                    , _itemGlyph = 'X'
-                   , _i_attackPower = 0
-                   , _i_defensePower = 0
-                   , _i_foodValue = 0
-                   , _i_throwAttackPower = 0
-                   , _i_rangedAttackPower = 0
+                   , _iAttackPower = 0
+                   , _iDefensePower = 0
+                   , _iFoodValue = 0
+                   , _iThrowAttackPower = 0
+                   , _iRangedAttackPower = 0
                    , _quaffEffect = Nothing
                    , _itemSpells = []
                    }
@@ -211,7 +211,7 @@ defaultItem = Item { _itemLocation = (0,0,0)
 createRock = item defaultItem
     { _itemName = "rock"
     , _itemGlyph = ','
-    , _i_throwAttackPower = 1
+    , _iThrowAttackPower = 1
     }
 
 createVictoryItem = item defaultItem
@@ -223,59 +223,59 @@ createVictoryItem = item defaultItem
 createDagger = item defaultItem
     { _itemName = "dagger"
     , _itemGlyph = ')'
-    , _i_attackPower = 5
-    , _i_throwAttackPower = 5
+    , _iAttackPower = 5
+    , _iThrowAttackPower = 5
     }
 
 createSword = item defaultItem
     { _itemName = "sword"
     , _itemStyle = SwordStyle
     , _itemGlyph = ')'
-    , _i_attackPower = 10
-    , _i_throwAttackPower = 10
+    , _iAttackPower = 10
+    , _iThrowAttackPower = 10
     }
 
 createStaff = item defaultItem
     { _itemName = "staff"
     , _itemStyle = StaffStyle
     , _itemGlyph = ')'
-    , _i_attackPower = 5
-    , _i_defensePower = 5
-    , _i_throwAttackPower = 5
+    , _iAttackPower = 5
+    , _iDefensePower = 5
+    , _iThrowAttackPower = 5
     }
 
 createBow = item defaultItem
     { _itemName = "bow"
     , _itemStyle = ZombieStyle
     , _itemGlyph = ')'
-    , _i_attackPower = 1
-    , _i_rangedAttackPower = 5
+    , _iAttackPower = 1
+    , _iRangedAttackPower = 5
     }
 
 createTunic = item defaultItem
     { _itemName = "tunic"
     , _itemStyle = StaffStyle
     , _itemGlyph = '['
-    , _i_defensePower = 2
+    , _iDefensePower = 2
     }
 
 createChainmail = item defaultItem
     { _itemName = "chainmail"
     , _itemStyle = SwordStyle
     , _itemGlyph = '['
-    , _i_defensePower = 4
+    , _iDefensePower = 4
     }
 
 createPlatemail = item defaultItem
     { _itemName = "platemail"
     , _itemGlyph = '['
-    , _i_defensePower = 4
+    , _iDefensePower = 4
     }
 
 createBread = item defaultItem
     { _itemName = "bread"
     , _itemGlyph = '8'
-    , _i_foodValue = 200
+    , _iFoodValue = 200
     }
 
 randomWeapon depth = do
@@ -370,7 +370,7 @@ cheat = do
         , _hp = 100
         , _maxFood = 1000000
         , _food    = 1000000
-        , _attack_power = 50
+        , _attackPower = 50
         , _defense = 50
         , _visionRadius = 100
         , _inventory = [sb,bow,plate,sword] }

@@ -50,11 +50,11 @@ creatureTick c = do
     cs <- use creatures
     -- creatures can be destroyed (and removed from map), so verify they are "still alive"
     -- and that there is no cake
-    when ((c^.c_id) `M.member` cs) $ do
+    when ((c^.cId) `M.member` cs) $ do
         use (creature c) >>= effectTick
         manaTick c
         healthTick c
-        use (creature c) >>= creatureTick' (c^.c_kind)
+        use (creature c) >>= creatureTick' (c^.cKind)
 
 manaTick :: Creature -> GameState ()
 manaTick c = updateCreatureS c $ do
@@ -128,7 +128,7 @@ creatureCanPickup c = do
                   Nothing -> False
                   Just i -> isValuable i
 
-    where isValuable i = i^.i_attackPower > 0 || i^.i_defensePower > 0
+    where isValuable i = i^.iAttackPower > 0 || i^.iDefensePower > 0
 
 pickup :: Creature -> GameState ()
 pickup c = do
@@ -139,7 +139,7 @@ pickup c = do
     when (not fullInv && itemThere) $ do
         item <- itemAt loc
         removeItemFromWorld loc
-        (creature c).inventory %= (item:)
+        creature c .inventory %= (item:)
         creatureNotify ("pickup a " ++ item^.itemName) c
 
 hunt :: Creature -> GameState ()
@@ -162,8 +162,8 @@ duplicate c = do
         isItem <- isItem loc'
         when (isFloor && not isCreature && not isItem) $ do
             id <- nextInt
-            let child = c { _c_id = id , _location = loc' }
-            creatures %= insert (child^.c_id) child
+            let child = c { _cId = id , _location = loc' }
+            creatures %= insert (child^.cId) child
 
 
 upgradeMaxHp = do
@@ -171,7 +171,7 @@ upgradeMaxHp = do
     maxHp += 10
     levelUpgrades -= 1
 upgradeAttack = do
-    attack_power += 2
+    attackPower += 2
     levelUpgrades -= 1
 upgradeDefense = do
     defense += 2
@@ -248,16 +248,16 @@ target c = do
 
 itemDefensePower :: Creature -> Int
 itemDefensePower c = weapDef + armDef
-    where weapDef = maybe 0 _i_defensePower $ c^.weapon
-          armDef  = maybe 0 _i_defensePower $ c^.armor
+    where weapDef = maybe 0 _iDefensePower $ c^.weapon
+          armDef  = maybe 0 _iDefensePower $ c^.armor
 
 itemAttackPower :: Creature -> Int
 itemAttackPower c = weapVal + armVal
-    where weapVal = maybe 0 _i_attackPower (c^.weapon)
-          armVal  = maybe 0 _i_attackPower (c^.armor)
+    where weapVal = maybe 0 _iAttackPower (c^.weapon)
+          armVal  = maybe 0 _iAttackPower (c^.armor)
 
 creatureAttack :: Creature -> Int
-creatureAttack c = c^.attack_power + itemAttackPower c
+creatureAttack c = c^.attackPower + itemAttackPower c
 
 creatureDefense :: Creature -> Int
 creatureDefense c = c^.defense + itemDefensePower c
@@ -280,7 +280,7 @@ commonAttack creature maxAttack other =
 playerThrowAttack :: Item -> Creature -> GameState ()
 playerThrowAttack item other = do
     p <- use player
-    let maxAttack = div (p^.attack_power) 2 + item^.i_throwAttackPower - creatureDefense other
+    let maxAttack = div (p^.attackPower) 2 + item^.iThrowAttackPower - creatureDefense other
         quaff = case item^.quaffEffect of
                      Nothing -> return other
                      Just e -> addEffect e other
@@ -290,7 +290,7 @@ playerRangedAttack :: Creature -> GameState ()
 playerRangedAttack other = do
     p <- use player
     let Just w = p^.weapon
-        maxAttack = div (p^.attack_power) 2 + w^.i_rangedAttackPower - creatureDefense other
+        maxAttack = div (p^.attackPower) 2 + w^.iRangedAttackPower - creatureDefense other
     commonAttack p maxAttack other
 
 attack :: Creature -> Creature -> GameState()
@@ -308,14 +308,14 @@ die c other = do
 
 creatureDie :: Creature -> GameState ()
 creatureDie c = do
-    creatures %= M.delete (c^.c_id)
+    creatures %= M.delete (c^.cId)
     let msg name = "The " ++ name ++ " dies."
     notify (c^.location) $ msg (c^.name)
 
 foodValue :: Creature -> Int
 foodValue c =
-    let afv = (c^.level) * 100 + (c^.attack_power) * 10 + (c^.defense) * 10
-        fv = if (c^.c_kind) == Zombie then -afv else afv
+    let afv = (c^.level) * 100 + (c^.attackPower) * 10 + (c^.defense) * 10
+        fv = if (c^.cKind) == Zombie then -afv else afv
         in fv
 
 dropCorpse :: Creature -> GameState ()
@@ -329,14 +329,14 @@ dropCorpse c = if hasItem c then dropItem c else dropCorpse' c
 
           corpse c id = Item { _itemName = (c^.name) ++ " corpse"
                           , _itemGlyph = 'c'
-                          , _itemStyle = c^.c_style
+                          , _itemStyle = c^.cStyle
                           , _itemId = id
                           , _itemLocation = c^.location
-                          , _i_attackPower = 0
-                          , _i_defensePower = 0
-                          , _i_foodValue = foodValue c
-                          , _i_throwAttackPower = 0
-                          , _i_rangedAttackPower = 0
+                          , _iAttackPower = 0
+                          , _iDefensePower = 0
+                          , _iFoodValue = foodValue c
+                          , _iThrowAttackPower = 0
+                          , _iRangedAttackPower = 0
                           , _quaffEffect = Nothing
                           , _itemSpells = []
                           }
@@ -369,7 +369,7 @@ moveAbs creature loc = when (inBounds loc) $ do
     case mc of
          Just other -> attack creature other
          Nothing | creature == p  -> if canMove then updateLoc loc else dig loc
-                 | canMove -> creatures %= adjust (location .~ loc) (creature^.c_id)
+                 | canMove -> creatures %= adjust (location .~ loc) (creature^.cId)
                  | otherwise ->  return ()
 
     where updateLoc loc = do
@@ -440,8 +440,8 @@ equip i c = do
     updateCreatureS c $ equip' i
 
     where equip' i = do
-              let ap = i^.i_attackPower
-                  dp = i^.i_defensePower
+              let ap = i^.iAttackPower
+                  dp = i^.iDefensePower
               if ap >= dp
                  then weapon .= Just i
                  else armor .= Just i
@@ -460,7 +460,7 @@ eat i = do
     max <- use $ player.maxFood
     loc <- use $ player.location
     notify loc $ "You eat the " ++ i^.itemName
-    player.food += (i^.i_foodValue)
+    player.food += (i^.iFoodValue)
     player.food %= \f -> if f > max then max else f
     player.inventory %= L.delete i
 
@@ -470,14 +470,14 @@ modifyXP val c = updateCreature $ execState (modifyXp' val) c
     where modifyXp' val = do
               x <- xp <+= val
               l <- use $ level .to fromIntegral
-              when (fromIntegral x > l ** 1.5 * 20.0) levelUp
+              when (fromIntegral x > (l :: Double) ** 1.5 * 20.0) levelUp
 
           levelUp = do
               level += 1
               levelUpgrades += 1
 
 isPlayer :: Creature -> Bool
-isPlayer c = (c^.c_kind) == Player
+isPlayer c = (c^.cKind) == Player
 
 xpOf :: Creature -> Int
 xpOf c =
@@ -546,10 +546,10 @@ warriorEffect = defaultEffect
     }
 
     where increasePower = do
-              attack_power += 5
+              attackPower += 5
               defense += 5
           decreasePower = do
-              attack_power -= 5
+              attackPower -= 5
               defense -= 5
 
 

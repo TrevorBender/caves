@@ -134,7 +134,7 @@ fireWeaponScreen = do
     mw <- use $ player.weapon
     when (isJust mw) $ do
         let Just w = mw
-            ra = w^.i_rangedAttackPower
+            ra = w^.iRangedAttackPower
         when (ra /= 0) $ pushScreen FireWeapon
 
 targetScreen :: Char -> GameState () -> GameState ()

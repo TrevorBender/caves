@@ -286,8 +286,8 @@ drawCreature creature = do
     visible <- inScreenBounds x y
     when (visible && canSee game loc (game^.player)) $ do
         (sx,sy) <- getScreenCoords x y
-        let glyph = creature^.c_glyph
-            cstyle = getStyle (creature^.c_style) game
+        let glyph = creature^.cGlyph
+            cstyle = getStyle (creature^.cStyle) game
         liftIO $ setStyle cstyle
         drawStr sy sx [glyph]
 

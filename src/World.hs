@@ -24,7 +24,6 @@ import System.Random (randomRs, StdGen)
 import Game
 import Line (line)
 import Random as R (randomR)
-
 floor = Tile { _kind = Floor , _glyph = '.' , _tDescription = "cave floor" }
 wall = Tile { _kind = Wall , _glyph = '#' , _tDescription = "cave wall" }
 outOfBounds = Tile { _kind = Wall , _glyph = ' ' , _tDescription = "out of bounds" }

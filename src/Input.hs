@@ -152,7 +152,8 @@ targetScreen key targetAction = do
          '\ESC' -> dropScreen
          '\n' -> dropScreen >> targetAction
          _      -> return ()
-    where moveCursor dir = do
+    where moveCursor :: Direction -> GameState ()
+          moveCursor dir = do
               tl <- use targetLoc
               let tl' = tl <+> offsetDir dir
                   inGame = inBounds tl'

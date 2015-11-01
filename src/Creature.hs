@@ -372,7 +372,8 @@ moveAbs creature loc = when (inBounds loc) $ do
                  | canMove -> creatures %= adjust (location .~ loc) (creature^.cId)
                  | otherwise ->  return ()
 
-    where updateLoc loc = do
+    where updateLoc :: Coord -> GameState ()
+          updateLoc loc = do
               player.location .= loc
               targetLoc .= loc
 
@@ -439,7 +440,8 @@ equip i c = do
     creatureNotify equipStr c
     updateCreatureS c $ equip' i
 
-    where equip' i = do
+    where equip' :: Item -> CreatureState ()
+          equip' i = do
               let ap = i^.iAttackPower
                   dp = i^.iDefensePower
               if ap >= dp
@@ -467,7 +469,8 @@ eat i = do
 modifyXP :: Int -> Creature -> GameState ()
 modifyXP val c = updateCreature $ execState (modifyXp' val) c
 
-    where modifyXp' val = do
+    where modifyXp' :: Int -> CreatureState ()
+          modifyXp' val = do
               x <- xp <+= val
               l <- use $ level .to fromIntegral
               when (fromIntegral x > (l :: Double) ** 1.5 * 20.0) levelUp
@@ -589,6 +592,7 @@ cast spell = do
                  when (effectDone e) $
                      use (creature c) >>= e^.endEffect
                  creature c %= execState (castOnCreature e)
-    where castOnCreature e =
+    where castOnCreature :: Effect -> CreatureState ()
+          castOnCreature e =
               unless (effectDone e) $
                  effects %= insert (e^.effectId) e

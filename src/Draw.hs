@@ -15,7 +15,20 @@ import Data.Maybe (isJust)
 import UI.HSCurses.Curses (refresh, mvWAddStr, scrSize)
 import UI.HSCurses.CursesHelper (setStyle, resetStyle)
 
-import Game
+import Game ( dropItemFilter
+            , eatItemFilter
+            , readItemFilter
+            , quaffItemFilter
+            , throwItemFilter
+            , equipItemFilter
+            , examineItemFilter
+            , gameHeight, gameWidth, gameDepth
+            , player
+            , getStyle
+            , splitBy
+            , reverseCoord
+            )
+import Types
 import World (tileAt, unknownTile, canSee)
 import Creature (creatureAttack, creatureDefense, levelUpStrings)
 import Line (line)

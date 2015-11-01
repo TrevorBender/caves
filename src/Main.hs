@@ -18,10 +18,17 @@ import UI.HSCurses.Curses
     , startColor
     , endWin
     )
-import UI.HSCurses.CursesHelper as CH (convertStyles)
+import UI.HSCurses.CursesHelper as CH ( convertStyles
+                                      , defaultStyle
+                                      , Style(..)
+                                      , ForegroundColor(..)
+                                      , BackgroundColor(..)
+                                      , Attribute(..)
+                                      )
 
 import Draw (drawGame, resetColor)
-import Game
+import Game ( gameChanged )
+import Types
 import Input (getInput, processInput)
 import Generation (createGame)
 import Creature (creatureTick)
@@ -47,6 +54,20 @@ gameLoop game = do
     ch <- getInput
     let game'' = (execState $ processInput ch >> gameChanged >>= nehw tick) game'
     unless (emptyUis game'') $ gameLoop game''
+
+styleMap :: Map StyleType Style
+styleMap = M.fromAscList
+         [ (DefaultStyle, defaultStyle)
+         , (PlayerStyle, AttributeStyle [Bold] DefaultF DarkBlueB)
+         , (FungusStyle, AttributeStyle [Bold] GreenF DefaultB)
+         , (OutOfSiteStyle, AttributeStyle [Bold] WhiteF BlackB)
+         , (BatStyle, AttributeStyle [Bold] BrownF DefaultB)
+         , (VictoryItemStyle, AttributeStyle [Bold] YellowF DefaultB)
+         , (SwordStyle, AttributeStyle [] CyanF DefaultB)
+         , (StaffStyle, AttributeStyle [] BrownF DefaultB)
+         , (ZombieStyle, AttributeStyle [Bold] RedF DefaultB)
+         ]
+
 
 main :: IO ()
 main = do

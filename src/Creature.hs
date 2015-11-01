@@ -32,7 +32,19 @@ import Data.Map.Strict as M
 import Data.Maybe (isJust, fromJust)
 import Data.Array as A
 
-import Game
+import Game ( creature
+            , pushScreen
+            , player
+            , effectDone
+            , offsetDir
+            , (<+>)
+            , inBounds
+            , nextInt
+            , notify
+            , lose
+            , reverseCoord
+            )
+import Types
 import Random
 import World ( isFloor, isCreature
              , isItem, seeThrough

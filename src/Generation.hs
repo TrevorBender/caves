@@ -17,7 +17,16 @@ import System.Random as R (getStdGen)
 import UI.HSCurses.Curses (Window)
 import UI.HSCurses.CursesHelper (CursesStyle)
 
-import Game
+import Game ( nextInt
+            , gameDepth, gameWidth, gameHeight
+            , reverseCoord
+            , (<+>)
+            , player
+            , neighborsCoords
+            , inBounds
+            , offsetClimb
+            )
+import Types
 import World
 import Random
 import Creature (gainHealth, loseHealth, action, healthEffect, poisonEffect, warriorEffect, regenEffect)

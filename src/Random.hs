@@ -7,7 +7,10 @@ import Control.Lens
 import Control.Monad.State.Strict (get)
 import System.Random as R (randomR)
 
-import Game
+import Types ( Game(..)
+            , GameState(..)
+            , stdGen
+            )
 
 -- | Random number in a range
 randomR :: (Int,Int) -> GameState Int

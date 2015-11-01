@@ -15,7 +15,28 @@ import Data.Map.Strict as M (insert)
 import Data.Maybe (isJust, fromJust)
 import UI.HSCurses.Curses as C (Key(..), getCh)
 
-import Game
+import Game ( quit
+            , pushScreen
+            , ui
+            , dropItemFilter
+            , equipItemFilter
+            , eatItemFilter
+            , quaffItemFilter
+            , throwItemFilter
+            , examineItemFilter
+            , readItemFilter
+            , player
+            , dropScreen
+            , notify
+            , (<+>)
+            , offsetDir
+            , inBounds
+            , win
+            , offsetClimb
+            , offsetDir
+            , lose
+            )
+import Types
 import Creature (move, playerPickup, playerDropItem, playerEquip, eat, levelUpActions, playerThrowAttack, playerRangedAttack, quaff, cast)
 import World (creatureAt, isFloor, floor, tileAt', stairsDown, stairsUp, describe, describeItem, canSee', isCreature)
 

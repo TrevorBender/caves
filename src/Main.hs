@@ -36,9 +36,11 @@ import World (updateVisibleTiles)
 
 import Line
 
+-- | Does the game have any UIs left
 emptyUis :: Game -> Bool
 emptyUis game = null $ game^.uis
 
+-- | Tick of the game state for 1 turn
 tick :: GameState ()
 tick = do
     cs <- use $ creatures .to M.elems

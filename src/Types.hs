@@ -10,14 +10,16 @@ import System.Random (StdGen)
 import UI.HSCurses.Curses (Window)
 import UI.HSCurses.CursesHelper as CH (CursesStyle(..))
 
+-- | Each screen is meant to show a different state
 data Screen = Start | Win | Lose | Play | DropItem | EquipItem | EatItem | ChooseLevelUp
             | Help | ExamineItem | Look | Throw | ThrowItem | FireWeapon | QuaffItem
-            | CastSpell     -- pick target for spell
-            | ReadItem      -- pick spell book
-            | ReadSpellBook -- pick a spell
+            | CastSpell     -- | pick target for spell
+            | ReadItem      -- | pick spell book
+            | ReadSpellBook -- | pick a spell
 
 type Coord = (Int, Int, Int)
 
+-- | A generic style for text on the screen, independent of implementation
 data StyleType = DefaultStyle
                | PlayerStyle
                | FungusStyle
@@ -29,9 +31,15 @@ data StyleType = DefaultStyle
                | ZombieStyle
                deriving (Eq, Ord)
 
+-- | An effect
+-- | c = a Creature (does this have to be a Creature?)
+-- | g = the new game state
 data Effect_ c g = Effect
-    { _startEffect :: c -> g
+    { -- | triggered when the effect is started
+      _startEffect :: c -> g
+      -- | triggered every game tick while the effect is active
     , _updateEffect :: c -> g
+      -- | triggered at the end of the effect
     , _endEffect :: c -> g
     , _effectDuration :: Int
     , _effectTime :: Int
@@ -39,9 +47,12 @@ data Effect_ c g = Effect
     }
 makeLenses ''Effect_
 
+-- | Need a separate way of determining if an effect is equal.  For example, there can be multiple poison effects
+-- | at the same time
 instance Eq (Effect_ c g) where
     (==) a b = a^.effectId == b^.effectId
 
+-- | A spell has an effect
 data Spell_ c g = Spell
     { _spellName :: String
     , _manaCost :: Int

@@ -554,6 +554,7 @@ creatureNotify str c = do
     acs <- action c str
     notify (c^.location) acs
 
+warriorEffect :: Effect
 warriorEffect = defaultEffect
     { _startEffect = \c -> creatureNotify "feel stronger" c >> updateCreatureS c increasePower
     , _endEffect = \c -> creatureNotify "feel weaker" c >> updateCreatureS c decreasePower

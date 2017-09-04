@@ -21,7 +21,14 @@ import Data.Maybe (isNothing, isJust, fromJust)
 import Data.Map.Strict as M (elems, lookup, delete, (!), member)
 import System.Random (randomRs, StdGen)
 
-import Game
+import Game ( player
+            , gameDepth, gameHeight, gameWidth
+            , reverseCoord
+            , minBound
+            , inBounds
+            , neighbors8
+            )
+import Types
 import Line (line)
 import Random as R (randomR)
 floor = Tile { _kind = Floor , _glyph = '.' , _tDescription = "cave floor" }

@@ -116,6 +116,7 @@ neighborsCoords origin = ixs'
           ixs = map (origin <+>) offsets
           ixs' = filter inBounds ixs
 
+-- Get a list of all the neighbors of a coordinate
 neighbors8 :: Coord -> GameWorld -> [Tile]
 neighbors8 origin world = tiles
     where ixs = neighborsCoords origin
@@ -127,9 +128,11 @@ distanceSq :: Coord -> Coord -> Int
 distanceSq (x,y,_) (x',y',_) = sq (x - x') + sq (y - y')
     where sq x = x * x
 
+-- | Are two coordinates at the same depth?
 sameDepth :: Coord -> Coord -> Bool
 sameDepth (_,_,z) (_,_,z') = z == z'
 
+-- | Add a notifiction message, if the coordinate is in range
 notify :: Coord -> String -> GameState ()
 notify loc s = do
     p <- use player
@@ -138,14 +141,17 @@ notify loc s = do
         inRange = sameDepth loc ploc && distanceSq loc ploc <= vision * vision
     when inRange $ messages %= (s:)
 
+-- | add screen to the game
 pushScreen :: Screen -> GameState ()
 pushScreen ui = uis %= (++ [ui])
 
+-- | remove the last screen, if there is any
 dropScreen :: GameState ()
 dropScreen = uis %= safeInit
     where safeInit [] = []
           safeInit xs = init xs
 
+-- | lose the game with message
 lose :: String -> GameState ()
 lose msg = do
     updated .= False
@@ -153,11 +159,13 @@ lose msg = do
     messages %= (msg:)
     pushScreen Lose
 
+-- | exit the game
 quit :: GameState ()
 quit = do
     uis .= []
     updated .= False
 
+-- | win the game
 win :: GameState ()
 win = pushScreen Win
 
@@ -167,12 +175,14 @@ debug str x = if debugOn then debug' str x else x
               hPutStrLn stderr str
               return x
 
+-- | Should the game be updated?
 gameChanged :: GameState Bool
 gameChanged = use updated
 
 effectDone :: Effect -> Bool
 effectDone e = e^.effectTime >= e^.effectDuration
 
+dropItemFilter, equipItemFilter, eatItemFilter, examineItemFilter, throwItemFilter, quaffItemFilter, readItemFilter :: Item -> Bool
 dropItemFilter = const True
 equipItemFilter i = i^.iAttackPower > 0 || i^.iDefensePower > 0
 eatItemFilter i = i^.iFoodValue /= 0
